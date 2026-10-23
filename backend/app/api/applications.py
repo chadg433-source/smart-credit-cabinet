@@ -171,3 +171,53 @@ def get_application_history(application_id: UUID, db: Session = Depends(get_db))
         }
         for h in history
     ]
+
+# тут подписываем документики
+@router.post("/{application_id}/documents", response_model=ApplicationResponse)
+def sign_documents(application_id: UUID, db: Session = Depends(get_db)):
+    app = db.query(Application).filter(Application.id == application_id).first()
+    if not app:
+        raise HTTPException(status_code=404, detail="Заявка не найдена")
+
+    if app.status not in [Status.APPROVED.value, Status.APPROVED_WITH_CONDITIONS.value]:
+        raise HTTPException(status_code=400, detail=f"Нельзя подписать документы в статусе {app.status}")
+
+    old_status = app.status
+    app.status = Status.DOCUMENTS.value
+
+    history = ApplicationStatusHistory(
+        application_id=app.id,
+        old_status=old_status,
+        new_status=app.status,
+        comment="Клиент подписал кредитные документы"
+    )
+    db.add(history)
+    db.commit()
+    db.refresh(app)
+    return app
+
+
+#тут выдаем кредит
+@router.post("/{application_id}/disburse", response_model=ApplicationResponse)
+def disburse_application(application_id: UUID, db: Session = Depends(get_db)):
+    app = db.query(Application).filter(Application.id == application_id).first()
+    if not app:
+        raise HTTPException(status_code=404, detail="Заявка не найдена")
+
+    if app.status != Status.DOCUMENTS.value:
+        raise HTTPException(status_code=400,
+                            detail=f"Нельзя выдать кредит в статусе {app.status}. Сначала подпишите документы.")
+
+    old_status = app.status
+    app.status = Status.DISBURSED.value
+
+    history = ApplicationStatusHistory(
+        application_id=app.id,
+        old_status=old_status,
+        new_status=app.status,
+        comment="Денежные средства переведены на счет компании "
+    )
+    db.add(history)
+    db.commit()
+    db.refresh(app)
+    return app
