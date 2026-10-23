@@ -50,11 +50,17 @@ def get_applications(db: Session = Depends(get_db)):
 
 
 @router.get("/bank/queue")
-def get_bank_queue(db: Session = Depends(get_db)):
+def get_bank_queue(
+    skip: int = 0,
+    limit: int = 50,
+    db: Session = Depends(get_db)
+):
     results = (
         db.query(Application, Business.name)
         .join(Business, Application.business_id == Business.id)
         .order_by(Application.created_at.desc())
+        .offset(skip)
+        .limit(limit)
         .all()
     )
 
@@ -77,7 +83,6 @@ def get_bank_queue(db: Session = Depends(get_db)):
         for app, business_name in results
     ]
 
-
 @router.post("/{application_id}/submit", response_model=ApplicationResponse)
 def submit_application(
     application_id: UUID,
@@ -93,6 +98,14 @@ def submit_application(
         raise HTTPException(
             status_code=404,
             detail="Заявка не найдена",
+        )
+
+    if app.status == Status.NEED_MORE_INFO.value:
+        transition_application(
+            app,
+            Status.VALIDATION.value, # Сначала возвращаем на валидацию
+            "Повторная проверка после догрузки данных",
+            db,
         )
 
     try:
