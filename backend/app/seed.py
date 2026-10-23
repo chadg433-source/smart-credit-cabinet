@@ -11,6 +11,10 @@ T = TypeVar('T', bound=Base)
 
 def seed():
     with SessionLocal() as session:
+        # Проверяем, есть ли уже данные
+        if session.query(Business).first():
+            print("Данные уже существуют, пропускаем сид.")
+            return
         entrepreneur = create_object(
             Entrepreneur,
             session,

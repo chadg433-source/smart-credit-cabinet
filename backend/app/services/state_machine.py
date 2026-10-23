@@ -26,7 +26,7 @@ TRANSITIONS: dict[Status, set[Status]] = {
         Status.REJECTED,
         Status.NEED_MORE_INFO,
     },
-    Status.NEED_MORE_INFO: {Status.VALIDATION},
+    Status.NEED_MORE_INFO: {Status.VALIDATION, Status.SUBMITTED},
     Status.APPROVED: {Status.DOCUMENTS},
     Status.APPROVED_WITH_CONDITIONS: {Status.DOCUMENTS, Status.REJECTED},
     Status.DOCUMENTS: {Status.DISBURSED},
