@@ -129,3 +129,21 @@ def get_application(application_id: UUID, db: Session = Depends(get_db)):
     if not app:
         raise HTTPException(status_code=404, detail="Заявка не найдена")
     return app
+
+@router.get("/bank/queue")
+def get_bank_queue(db: Session = Depends(get_db)):
+    results = db.query(Application, Business.name).join(
+        Business, Application.business_id == Business.id
+    ).order_by(Application.created_at.desc()).all()
+
+    return [
+        {
+            "id": str(app.id),
+            "business_name": business_name,
+            "requested_amount": float(app.requested_amount),
+            "requested_term_months": app.requested_term_months,
+            "status": app.status,
+            "created_at": app.created_at.isoformat() if app.created_at else None
+        }
+        for app, business_name in results
+    ]
