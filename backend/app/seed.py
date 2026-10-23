@@ -63,7 +63,7 @@ def seed():
             requested_amount=Decimal("1000000.00"),
             requested_term_months=36,
             purpose="Покупка оборудования",
-            status="UNDER_REVIEW"
+            status="SUBMITTED"
         )
         create_object(
             ExternalCheckResult,
@@ -99,7 +99,7 @@ def seed():
             session,
             application_id=application.id,
             old_status="DRAFT",
-            new_status="UNDER_REVIEW",
+            new_status="SUBMITTED",
             comment="Заявка передана на рассмотрение"
         )
         session.commit()
