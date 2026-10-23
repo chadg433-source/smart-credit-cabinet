@@ -147,3 +147,25 @@ def get_bank_queue(db: Session = Depends(get_db)):
         }
         for app, business_name in results
     ]
+
+
+# вот по этой приколюхе рисовать полоску с этапами в кабинете клиента
+@router.get("/{application_id}/history")
+def get_application_history(application_id: UUID, db: Session = Depends(get_db)):
+    app = db.query(Application).filter(Application.id == application_id).first()
+    if not app:
+        raise HTTPException(status_code=404, detail="Заявка не найдена")
+
+    history = db.query(ApplicationStatusHistory).filter(
+        ApplicationStatusHistory.application_id == application_id
+    ).order_by(ApplicationStatusHistory.changed_at.asc()).all()
+
+    return [
+        {
+            "old_status": h.old_status,
+            "new_status": h.new_status,
+            "comment": h.comment,
+            "created_at": h.changed_at.isoformat() if h.changed_at else None
+        }
+        for h in history
+    ]
