@@ -19,6 +19,8 @@ services:
     build: ./backend
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-alfa}:${POSTGRES_PASSWORD:-alfa}@db:5432/${POSTGRES_DB:-credit}
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://ollama:11434}
+      LLM_MODEL: ${LLM_MODEL:-qwen3:4b}
     ports:
       - "8000:8000"
     depends_on:
@@ -36,5 +38,32 @@ services:
     depends_on:
       - backend
 
+  # --- LLM (локальная модель с открытыми весами). Запуск: docker compose --profile llm up ---
+  ollama:
+    image: ollama/ollama:latest  # TODO перед сдачей зафиксировать конкретную версию (требование хакатона)
+    profiles: ["llm"]
+    volumes:
+      - ollamadata:/root/.ollama
+    ports:
+      - "11434:11434"
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  ollama-pull:
+    image: ollama/ollama:latest  # TODO та же версия, что у ollama
+    profiles: ["llm"]
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      LLM_MODEL: ${LLM_MODEL:-qwen3:4b}
+    entrypoint: ["sh", "-c", "ollama pull \"$$LLM_MODEL\""]
+    restart: "no"
+
 volumes:
   pgdata:
+  ollamadata:
