@@ -86,7 +86,8 @@ def process_application(application_id: UUID, db: Session = Depends(get_db)):
     business = db.query(Business).filter(Business.id == app.business_id).first()
     product = db.query(CreditProduct).filter(CreditProduct.id == app.credit_product_id).first()
     scoring_data = calculate_scoring(business, product, app.requested_amount)
-
+    if not business or not product:
+        raise HTTPException(status_code=500, detail="Ошибка данных: бизнес или продукт не найден")
     scoring_result = ScoringResult(
         application_id=app.id,
         total_score=scoring_data["total_score"],
@@ -143,6 +144,7 @@ def get_bank_queue(db: Session = Depends(get_db)):
             "requested_amount": float(app.requested_amount),
             "requested_term_months": app.requested_term_months,
             "status": app.status,
+            "can_be_processed": app.status in ["SUBMITTED", "NEED_MORE_INFO"],
             "created_at": app.created_at.isoformat() if app.created_at else None
         }
         for app, business_name in results
