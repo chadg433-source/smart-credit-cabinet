@@ -4,10 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.schemas import ApplicationCreate, ApplicationResponse
-from app.models import Application, ApplicationStatusHistory
+from app.models import Application, ApplicationStatusHistory, Business, CreditProduct, ScoringResult, CreditDecision
 from app.services.external_checks import run_external_checks
+from app.services.scoring import calculate_scoring
 from app.services.state_machine import assert_transition, Status
-
+from decimal import Decimal
 router = APIRouter(prefix="/applications", tags=["Applications"])
 
 @router.post("/", response_model=ApplicationResponse)
@@ -66,6 +67,56 @@ def submit_application(application_id: UUID, db: Session = Depends(get_db)):
         old_status=old_status,
         new_status=app.status,
         comment="Заявка отправлена на проверку"
+    )
+    db.add(history)
+    db.commit()
+    db.refresh(app)
+    return app
+
+
+@router.post("/{application_id}/process", response_model=ApplicationResponse)
+def process_application(application_id: UUID, db: Session = Depends(get_db)):
+    app = db.query(Application).filter(Application.id == application_id).first()
+    if not app:
+        raise HTTPException(status_code=404, detail="Заявка не найдена")
+
+    if app.status not in [Status.NEED_MORE_INFO.value, Status.SUBMITTED.value]:
+        raise HTTPException(status_code=400, detail=f"Заявка в статусе {app.status}, нельзя обработать")
+
+    business = db.query(Business).filter(Business.id == app.business_id).first()
+    product = db.query(CreditProduct).filter(CreditProduct.id == app.credit_product_id).first()
+    scoring_data = calculate_scoring(business, product, app.requested_amount)
+
+    scoring_result = ScoringResult(
+        application_id=app.id,
+        total_score=scoring_data["total_score"],
+        financial_stability_score=scoring_data["total_score"],
+        payment_capacity_score=scoring_data["total_score"],
+        business_age_score=scoring_data["total_score"],
+        external_checks_score=scoring_data["total_score"],
+        input_snapshot= "{}"
+    )
+    db.add(scoring_result)
+
+    decision_result = CreditDecision(
+        application_id=app.id,
+        decision=scoring_data["decision"],
+        reason=scoring_data["reason"],
+        offered_amount=scoring_data["offered_amount"],
+        offered_term_months=app.requested_term_months,
+        offered_rate=product.annual_rate if product else Decimal("15.00")
+    )
+    db.add(decision_result)
+
+    old_status = app.status
+    app.status = scoring_data["decision"]
+
+    history = ApplicationStatusHistory(
+        application_id=app.id,
+        old_status=old_status,
+        new_status=app.status,
+        comment=f"Автоматическое решение: {scoring_data['reason']}"
+
     )
     db.add(history)
     db.commit()
