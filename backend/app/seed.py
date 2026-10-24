@@ -6,16 +6,18 @@ from decimal import Decimal
 from app.database import SessionLocal, Base
 from app.models import Entrepreneur, Business, Application, ExternalCheckResult, ScoringResult, CreditDecision, \
     ApplicationStatusHistory, CreditProduct
+from app.config import settings
 
 T = TypeVar('T', bound=Base)
 
 def seed() -> None:
     with (SessionLocal() as session):
-        entrepreneur = session.query(Entrepreneur).where(Entrepreneur.full_name == "Губарьков Иван демо").first()
+        entrepreneur = session.query(Entrepreneur).where(Entrepreneur.id == settings.demo_user_id).first()
         if entrepreneur is None:
             entrepreneur = create_object(
                 Entrepreneur,
                 session,
+                id=settings.demo_user_id,
                 full_name="Губарьков Иван демо")
 
         business = session.query(Business).where(Business.tax_id == "7701234567",
@@ -34,7 +36,12 @@ def seed() -> None:
                 existing_monthly_loan_payments=Decimal("50000.00")
             )
 
-        product = session.query(CreditProduct).where(CreditProduct.name == "Бизнес-старт демо").first()
+        session.flush()
+
+        product = session.query(CreditProduct).where(
+            CreditProduct.name == "Бизнес-старт демо"
+        ).first()
+
         if product is None:
             product = create_object(
                 CreditProduct,
@@ -48,6 +55,9 @@ def seed() -> None:
                 annual_rate=Decimal("15.00"),
                 is_active=True
             )
+
+        session.flush()
+
         application = session.query(Application).where(Application.credit_product_id == product.id,
                                                        Application.business_id == business.id,
                                                        Application.purpose == "Покупка оборудования").first()
@@ -116,8 +126,11 @@ def seed() -> None:
             )
         session.commit()
 
-def create_object(model : type[T], current_session: Session, **kwargs) -> T:
-    obj = model(id=uuid.uuid4(), **kwargs)
+def create_object(model : type[T], current_session: Session, id: uuid.UUID | None = None, **kwargs) -> T:
+    if id is None:
+        id = uuid.uuid4()
+
+    obj = model(id=id, **kwargs)
     current_session.add(obj)
     return obj
 
