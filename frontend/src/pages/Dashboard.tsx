@@ -1,48 +1,85 @@
-import React from 'react';
+// src/pages/Dashboard.tsx
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { api } from '../api/client';
+import type { Application } from '../types';
 
-interface DashboardProps {
-  onLogout: () => void;
-}
+export const Dashboard = () => {
+  const navigate = useNavigate();
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [loading, setLoading] = useState(true);
 
-export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
+  useEffect(() => {
+    api.getApplications().then(data => {
+      setApplications(data);
+      setLoading(false);
+    });
+  }, []);
+
+  const handleLogout = () => navigate('/');
+
+  const getStatusColor = (status: string) => {
+    if (status === 'APPROVED') return '#10b981';
+    if (status === 'DECLINED') return '#ef4444';
+    if (status === 'DRAFT') return '#9ca3af';
+    return '#3b82f6'; 
+  };
+
   return (
     <div className="dashboard-page">
-      
-      <button type="button" className="logout-btn" onClick={onLogout}>
-        Выйти
-      </button>
+      <button type="button" className="logout-btn" onClick={handleLogout}>Выйти</button>
 
-      <div className="dashboard-content">
-        <div className="loan-card">
-          <h2>Заявка на кредит</h2>
-          <p>Заполните данные, чтобы получить решение за 2 минуты.</p>
+      <div className="dashboard-header" style={{ width: '100%', maxWidth: '1000px' }}>
+        <h1>Мои заявки</h1>
+        <button className="btn-submit" style={{ width: 'auto' }} onClick={() => navigate('/products')}>
+          + Создать заявку
+        </button>
+      </div>
 
-          <form className="loan-form" onSubmit={(e) => e.preventDefault()}>
-            <div className="form-group">
-              <label>Сумма кредита (₽)</label>
-              <input type="number" placeholder="Например, 100 000" className="reg-input" />
-            </div>
-
-            <div className="form-group">
-              <label>Срок кредита</label>
-              <select className="reg-input" defaultValue="12">
-                <option value="6">6 месяцев</option>
-                <option value="12">12 месяцев</option>
-                <option value="24">24 месяца</option>
-                <option value="36">36 месяцев</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Цель кредита</label>
-              <input type="text" placeholder="Например, ремонт" className="reg-input" />
-            </div>
-
-            <button type="submit" className="btn-submit" style={{ marginTop: '20px' }}>
-              Отправить заявку
-            </button>
-          </form>
-        </div>
+      <div style={{ width: '100%', maxWidth: '1000px' }}>
+        {loading ? (
+          <p>Загрузка заявок...</p>
+        ) : applications.length === 0 ? (
+          <p>У вас пока нет заявок.</p>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', background: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+            <thead style={{ background: '#f9fafb', textAlign: 'left' }}>
+              <tr>
+                <th style={{ padding: '16px', borderBottom: '1px solid #e5e7eb' }}>ID</th>
+                <th style={{ padding: '16px', borderBottom: '1px solid #e5e7eb' }}>Продукт</th>
+                <th style={{ padding: '16px', borderBottom: '1px solid #e5e7eb' }}>Сумма</th>
+                <th style={{ padding: '16px', borderBottom: '1px solid #e5e7eb' }}>Статус</th>
+                <th style={{ padding: '16px', borderBottom: '1px solid #e5e7eb' }}>Дата</th>
+              </tr>
+            </thead>
+            <tbody>
+              {applications.map(app => (
+                <tr 
+                  key={app.id} 
+                  style={{ borderBottom: '1px solid #e5e7eb', cursor: 'pointer' }}
+                  onClick={() => navigate(`/application/${app.id}/status`)} 
+                >
+                  <td style={{ padding: '16px', color: '#6b7280' }}>{app.id}</td>
+                  <td style={{ padding: '16px', fontWeight: 500 }}>{app.productName}</td>
+                  <td style={{ padding: '16px' }}>{app.amount.toLocaleString()} ₽</td>
+                  <td style={{ padding: '16px' }}>
+                    <span style={{ 
+                      padding: '4px 12px', 
+                      borderRadius: '20px', 
+                      fontSize: '13px', 
+                      fontWeight: 600,
+                      color: 'white',
+                      backgroundColor: getStatusColor(app.status)
+                    }}>
+                      {app.status}
+                    </span>
+                  </td>
+                  <td style={{ padding: '16px', color: '#6b7280' }}>{app.createdAt}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

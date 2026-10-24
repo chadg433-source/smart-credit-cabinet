@@ -1,12 +1,12 @@
 import React from 'react';
 import { useCardController } from '../controller/Controller.ts';
+
 interface RegistrationCardProps {
   onSuccess?: () => void;
 }
 
 export const RegistrationCard: React.FC<RegistrationCardProps> = ({ onSuccess }) => {
   const { isRegistering, handleOpenRegistration } = useCardController();
-  const alfaAuthLink = `https://id-sandbox.alfabank.ru/oidc/authorize?client_id=ВАШ_CLIENT_ID&redirect_uri=http://localhost:5173/auth/callback&response_type=code&scope=openid profile email`;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault(); 
@@ -32,7 +32,10 @@ export const RegistrationCard: React.FC<RegistrationCardProps> = ({ onSuccess })
                   <form className="reg-form" onSubmit={handleSubmit}>
                     <h1>Регистрация</h1>
                     <p>Создайте аккаунт для доступа к системе.</p>
-                    <a href={alfaAuthLink} className="btn-submit">Войти через Альфа-Банк</a>
+                    
+                    <button type="submit" className="btn-submit" style={{ marginTop: '10px' }}>
+                      Зарегистрироваться через Альфа-Банк
+                    </button>
                   </form>
                 )}
               </div>
