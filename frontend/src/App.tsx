@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { RegistrationCard } from './components/registration';
-import { Dashboard } from './components/Dashboard';
+import { RegistrationCard } from './pages/registration';
+import { Dashboard } from './pages/Dashboard';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<'register' | 'dashboard'>('register');

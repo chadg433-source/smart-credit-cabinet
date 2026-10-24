@@ -249,7 +249,6 @@
     align-items: center;
     justify-content: center;
   }
-}
 
 
   .card-table {
@@ -333,4 +332,4 @@
   select.reg-input,
   textarea.reg-input {
     font-size: 16px;
-  }
+  }}
