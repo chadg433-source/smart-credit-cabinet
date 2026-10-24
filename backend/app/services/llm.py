@@ -28,10 +28,12 @@ log = logging.getLogger(__name__)
 SYSTEM_PROMPT = (
     "Ты помощник кредитного кабинета для малого бизнеса. "
     "Объясни предпринимателю решение банка по заявке простым языком, без жаргона. "
-    "Используй ТОЛЬКО цифры из данных ниже, ничего не считай и не придумывай. "
-    "Ответ: 3-4 коротких предложения на русском: что решил банк, почему, "
-    "что можно сделать дальше. "
-    "Ты не принимаешь решений и ничего не обещаешь."
+    "Используй ТОЛЬКО факты из данных ниже, ничего не считай и не придумывай. "
+    "Ответ: один абзац из 3-4 коротких предложений на русском, без списков и без переносов строк: "
+    "что решил банк, почему, что клиенту делать дальше. "
+    "Следующий шаг бери ТОЛЬКО из поля «Следующий шаг клиента». "
+    "Нельзя утверждать, что деньги уже выданы, и нельзя говорить, что делать ничего не нужно, "
+    "если это не указано в данных. Ты не принимаешь решений и ничего не обещаешь."
 )
 
 DECISION_LABELS = {
@@ -40,6 +42,25 @@ DECISION_LABELS = {
     "REJECTED": "отказ",
 }
 
+# Что клиенту делать дальше. Определяется кодом, а не моделью,
+# чтобы модель не придумывала шаги процесса.
+NEXT_STEP_BY_DECISION = {
+    "APPROVED": "подписать документы, после этого банк выдаст средства",
+    "APPROVED_WITH_CONDITIONS": "согласиться с предложенными условиями и подписать документы либо подать новую заявку",
+    "REJECTED": "при желании подать новую заявку с другой суммой или сроком",
+}
+NEXT_STEP_BY_STATUS = {
+    "DOCUMENTS": "подписать документы, после этого банк выдаст средства",
+    "DISBURSED": "ничего: средства уже выданы",
+}
+
+# Фразы, которые нельзя пропускать клиенту, пока средства не выданы.
+_FORBIDDEN_UNLESS_DISBURSED = re.compile(
+    r"(кредит|средства|деньги)\s+(уже\s+)?выдан|ничего\s+(больше\s+)?(делать\s+)?не\s+нужно",
+    re.IGNORECASE,
+)
+
+
 # Кэш в памяти: ключ - id решения. Повторный клик не ждёт генерацию заново.
 # Сбрасывается при перезапуске бэкенда, для MVP этого достаточно.
 _cache: dict[str, dict] = {}
@@ -47,6 +68,7 @@ _cache: dict[str, dict] = {}
 
 def build_facts(
     *,
+    app_status: str,
     decision: str,
     reason: str,
     requested_amount: float,
@@ -61,7 +83,12 @@ def build_facts(
     loan_share = (
         round(monthly_loan_payments / monthly_revenue * 100) if monthly_revenue else 0
     )
+    next_step = NEXT_STEP_BY_STATUS.get(app_status) or NEXT_STEP_BY_DECISION.get(
+        decision, "ожидать дальнейших указаний банка"
+    )
     return {
+        "app_status": app_status,
+        "next_step": next_step,
         "decision": DECISION_LABELS.get(decision, decision),
         "reason": reason,
         "requested_amount": requested_amount,
@@ -90,6 +117,7 @@ def build_user_prompt(facts: dict) -> str:
             f"Выручка в месяц: {_fmt_rub(facts['monthly_revenue'])}",
             f"Прибыль в месяц: {_fmt_rub(facts['monthly_profit'])}",
             f"Платежи по текущим кредитам: {facts['loan_payments_share_percent']}% выручки",
+            f"Следующий шаг клиента: {facts['next_step']}",
         ]
     )
 
@@ -168,8 +196,11 @@ def explain_decision(cache_key: str, facts: dict) -> dict:
         )
         # на случай моделей, которые рассуждают вслух в тегах <think>
         text = re.sub(r"<think>.*?</think>", "", raw, flags=re.S).strip()
+        text = " ".join(text.split())  # один абзац: убираем переносы и лишние пробелы
         if not text:
             raise ValueError("пустой ответ модели")
+        if facts.get("app_status") != "DISBURSED" and _FORBIDDEN_UNLESS_DISBURSED.search(text):
+            raise ValueError("ответ модели противоречит статусу заявки")
         result = {"text": text, "source": "llm", "model": settings.llm_model}
         _cache[cache_key] = result
         return result

@@ -50,6 +50,7 @@ def explain_application(application_id: UUID, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Ошибка данных: бизнес не найден")
 
     facts = build_facts(
+        app_status=str(app.status),
         decision=decision.decision,
         reason=decision.reason,
         requested_amount=float(app.requested_amount),

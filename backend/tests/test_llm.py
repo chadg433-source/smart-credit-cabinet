@@ -9,6 +9,7 @@ from app.services import llm  # noqa: E402
 
 def make_facts(**overrides):
     base = dict(
+        app_status="DECISION_PENDING",
         decision="APPROVED_WITH_CONDITIONS",
         reason="Средняя платежеспособность. Сумма снижена.",
         requested_amount=1_000_000.0,
@@ -110,3 +111,33 @@ def test_status_unavailable_when_nothing_listens(monkeypatch):
     # порт 9 (discard) почти всегда закрыт: соединение отклоняется сразу
     monkeypatch.setattr(llm.settings, "llm_url", "http://127.0.0.1:9")
     assert llm.llm_status() == {"available": False, "status": "unavailable"}
+
+
+def test_next_step_comes_from_code_not_model():
+    assert "подписать документы" in make_facts(decision="APPROVED")["next_step"]
+    assert "новую заявку" in make_facts(decision="REJECTED")["next_step"]
+    assert "уже выданы" in make_facts(app_status="DISBURSED")["next_step"]
+    assert "Следующий шаг клиента" in llm.build_user_prompt(make_facts())
+
+
+def test_model_claiming_money_issued_is_rejected(monkeypatch):
+    _ready(monkeypatch)
+    lie = "Банк одобрил заявку. Кредит выдан в полном объёме, больше ничего не нужно."
+    monkeypatch.setattr(llm, "_call_llm", lambda m: lie)
+    res = llm.explain_decision("k6", make_facts(decision="APPROVED"))
+    assert res["source"] == "fallback"
+
+
+def test_legit_future_issue_is_not_rejected(monkeypatch):
+    _ready(monkeypatch)
+    ok = "Банк одобрил заявку. После подписания документов средства будут выданы на счёт."
+    monkeypatch.setattr(llm, "_call_llm", lambda m: ok)
+    res = llm.explain_decision("k7", make_facts(decision="APPROVED"))
+    assert res["source"] == "llm"
+
+
+def test_newlines_are_collapsed(monkeypatch):
+    _ready(monkeypatch)
+    monkeypatch.setattr(llm, "_call_llm", lambda m: "Первое.  \nВторое.  \n\nТретье.")
+    res = llm.explain_decision("k8", make_facts())
+    assert res["text"] == "Первое. Второе. Третье."
