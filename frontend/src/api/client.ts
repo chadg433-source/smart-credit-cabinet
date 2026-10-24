@@ -1,0 +1,1 @@
+// тут все fetch запросы к FASRTAPI

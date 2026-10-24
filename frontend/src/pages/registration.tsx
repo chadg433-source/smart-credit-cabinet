@@ -1,5 +1,5 @@
 import React from 'react';
-import { useCardController } from '../controller/Controller';
+import { useCardController } from '../controller/Controller.ts';
 interface RegistrationCardProps {
   onSuccess?: () => void;
 }

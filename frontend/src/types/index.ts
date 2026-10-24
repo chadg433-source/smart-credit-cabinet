@@ -1,0 +1,1 @@
+// тут TypeScript-интерфейсы (Product, Application, HistoryItem)
