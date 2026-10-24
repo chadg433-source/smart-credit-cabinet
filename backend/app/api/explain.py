@@ -6,9 +6,9 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Application, Business, CreditDecision
-from app.services.llm import build_facts, explain_decision
+from app.services.llm import build_facts, explain_decision, llm_status
 
-router = APIRouter(prefix="/applications", tags=["LLM"])
+router = APIRouter(tags=["LLM"])
 
 
 class ExplainResponse(BaseModel):
@@ -17,7 +17,19 @@ class ExplainResponse(BaseModel):
     model: str | None = None
 
 
-@router.post("/{application_id}/explain", response_model=ExplainResponse)
+class LlmStatusResponse(BaseModel):
+    available: bool
+    status: str  # "ready" | "loading" | "unavailable"
+
+
+@router.get("/llm/status", response_model=LlmStatusResponse)
+def get_llm_status():
+    """Доступна ли LLM. Фронтенд по этому полю включает или отключает кнопку ИИ.
+    Не зависит от /health и никогда не падает, даже если LLM выключена."""
+    return llm_status()
+
+
+@router.post("/applications/{application_id}/explain", response_model=ExplainResponse)
 def explain_application(application_id: UUID, db: Session = Depends(get_db)):
     """Объясняет решение по заявке простым языком. Данные только читает."""
     app = db.query(Application).filter(Application.id == application_id).first()

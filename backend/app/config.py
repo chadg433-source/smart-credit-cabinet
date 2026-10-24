@@ -3,10 +3,10 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://alfa:alfa@localhost:5432/credit"
 
-    # LLM (Ollama, модели с открытыми весами)
-    llm_base_url: str = "http://localhost:11434"
-    llm_model: str = "qwen3:4b"
-    llm_timeout_seconds: float = 30.0
+    # LLM: любой сервер с OpenAI-совместимым API (по умолчанию llama.cpp в контейнере `llm`)
+    llm_url: str = "http://localhost:8080"
+    llm_model: str = "t-lite-it-2.1"
+    llm_timeout_seconds: float = 90.0  # 8B-модель на CPU отвечает десятки секунд
 
     class Config:
         env_file = ".env"
