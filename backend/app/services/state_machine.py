@@ -40,6 +40,6 @@ def can_transition(current: str, target: str) -> bool:
         return False
     return target_enum in TRANSITIONS.get(current_enum, set())
 
-def assert_transition(current: str, target: str) -> None:
+def     assert_transition(current: str, target: str) -> None:
     if not can_transition(current, target):
         raise ValueError(f"Недопустимый переход статуса: {current} -> {target}")

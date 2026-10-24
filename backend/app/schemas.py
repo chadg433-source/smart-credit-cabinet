@@ -1,7 +1,6 @@
+from datetime import datetime
 from decimal import Decimal
-
 from pydantic import Field, BaseModel, ConfigDict
-from sqlalchemy import true
 from  uuid import UUID
 
 class ApplicationCreate(BaseModel):
@@ -20,5 +19,12 @@ class ApplicationResponse(ApplicationCreate):
     model_config = ConfigDict(from_attributes=True)
 
 
+class TokenResponse(BaseModel):
+    access_token: str = Field(..., title="Access_token")
+    token_type: str =  Field(default="bearer", title="Token")
 
-
+class EntrepreneurResponse(BaseModel):
+    id: UUID = Field(..., title="ID")
+    full_name: str = Field(..., title="Full Name")
+    created_at: datetime = Field(..., title="Created at")
+    model_config = ConfigDict(from_attributes=True)
