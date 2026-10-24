@@ -1,7 +1,5 @@
 import React from 'react';
 import { useCardController } from '../controller/Controller';
-
-
 interface RegistrationCardProps {
   onSuccess?: () => void;
 }
@@ -34,11 +32,6 @@ export const RegistrationCard: React.FC<RegistrationCardProps> = ({ onSuccess })
                   <form className="reg-form" onSubmit={handleSubmit}>
                     <h1>Регистрация</h1>
                     <p>Создайте аккаунт для доступа к системе.</p>
-                    <input type="text" placeholder="Ваше имя" className="reg-input" required />
-                    <input type="email" placeholder="Email" className="reg-input" required />
-                    <input type="password" placeholder="Пароль" className="reg-input" required />
-                    <button type="submit" className="btn-submit">Зарегистрироваться</button>
-                    <div className="reg-divider">или</div>
                     <a href={alfaAuthLink} className="btn-submit">Войти через Альфа-Банк</a>
                   </form>
                 )}
