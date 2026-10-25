@@ -1,7 +1,7 @@
 // тут все fetch запросы к FASRTAPI
 import type { Product, Application, HistoryItem } from '../types';
 
-// Имитация базы данных на фронтенде
+// Имитация
 const MOCK_PRODUCTS: Product[] = [
   { id: 'p1', name: 'Экспресс-кредит', description: 'Быстрые деньги на развитие бизнеса', minAmount: 50000, maxAmount: 1000000, terms: [6, 12, 24] },
   { id: 'p2', name: 'Кредит на оборот', description: 'Для пополнения складских запасов', minAmount: 500000, maxAmount: 5000000, terms: [12, 24, 36] },

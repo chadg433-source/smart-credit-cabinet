@@ -1,95 +1,752 @@
+/* dashboard.css */
+.applications-page {
+  --app-bg: #f4f6fa;
+  --app-surface: #ffffff;
+  --app-text: #18243a;
+  --app-muted: #7a8598;
+  --app-border: #e8edf4;
+  --app-primary: #2457d6;
 
-.dashboard-page {
+  min-height: 100vh;
   width: 100%;
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 60px 20px 40px;
+  background: var(--app-bg);
+  color: var(--app-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
   box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
+}
+
+.applications-page *,
+.applications-page *::before,
+.applications-page *::after {
+  box-sizing: border-box;
+}
+
+/* Верхняя панель */
+
+.applications-page .applications-topbar {
+  min-height: 72px;
+  width: 100%;
+  padding: 0 max(24px, calc((100% - 1180px) / 2));
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-}
-
-.logout-btn {
-  position: fixed;
-  top: 12px; 
-  right: 32px; 
-  
-  height: 40px; 
-  padding: 0 24px;
-  
-  background-color: #ffffff;
-  color: rgb(255, 0, 0); 
-  border: none;
-  border-radius: 8px; 
-  
-  font-family: "Alfa Interface Sans", sans-serif;
-  font-weight: 700;
-  font-size: 15px;
-  
-  cursor: pointer;
-  z-index: 1000; 
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); 
-  transition: all 0.2s ease;
-}
-
-.logout-btn:hover {
-  background-color: #f3f4f6;
-  transform: translateY(-1px); 
-}
-.dashboard-content {
-  display: flex;
-  justify-content: center;
-  width: 100%;
-}
-
-
-.loan-card {
+  gap: 20px;
   background: #ffffff;
+  border-bottom: 1px solid var(--app-border);
+}
+
+.applications-page .applications-back {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 0;
+  border: 0;
+  background: transparent;
+  color: #657187;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.applications-page .applications-back:hover {
+  color: var(--app-primary);
+}
+
+.applications-page .applications-back span:first-child {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.applications-page .applications-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.applications-page .applications-brand-mark {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: var(--app-primary);
+  color: #ffffff;
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.applications-page .applications-topbar-label {
+  justify-self: end;
+  padding: 8px 13px;
+  border-radius: 9px;
+  background: #f2f5fb;
+  color: #59677f;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Основной контейнер */
+
+.applications-page .applications-container {
   width: 100%;
-  max-width: 600px;
-  padding: 40px;
-  border-radius: 20px;
-  border: 2px solid #1f2328;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 44px 24px 28px;
 }
 
-.loan-card h2 {
-  font-family: "Alfa Interface Sans", sans-serif;
-  font-size: 28px;
-  margin-top: 0;
-  margin-bottom: 10px;
-}
-
-.loan-card p {
-  color: #6b7280;
+.applications-page .applications-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
   margin-bottom: 30px;
 }
 
-.loan-form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+.applications-page .applications-eyebrow {
+  margin-bottom: 10px;
+  color: var(--app-primary);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
 }
 
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.applications-page .applications-heading h1 {
+  margin: 0;
+  color: var(--app-text);
+  font-size: clamp(30px, 4vw, 38px);
+  font-weight: 800;
+  letter-spacing: -1.2px;
+  line-height: 1.2;
 }
 
-.form-group label {
+.applications-page .applications-heading p {
+  max-width: 570px;
+  margin: 12px 0 0;
+  color: var(--app-muted);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.applications-page .applications-primary-button {
+  min-height: 46px;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 0 19px;
+  border: 1px solid var(--app-primary);
+  border-radius: 11px;
+  background: var(--app-primary);
+  color: #ffffff;
+  font: inherit;
   font-size: 14px;
-  font-weight: 500;
-  color: #374151;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 5px 12px rgba(36, 87, 214, 0.14);
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-select.reg-input {
-  appearance: none;
-  -webkit-appearance: none;
-  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236b7280%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
-  background-repeat: no-repeat;
-  background-position: right 1rem center;
-  background-size: 12px;
+.applications-page .applications-primary-button:hover {
+  background: #1948bd;
+  box-shadow: 0 7px 18px rgba(36, 87, 214, 0.22);
+  transform: translateY(-1px);
+}
+
+.applications-page .applications-primary-button:focus-visible,
+.applications-page .applications-secondary-button:focus-visible,
+.applications-page .applications-back:focus-visible {
+  outline: 3px solid rgba(36, 87, 214, 0.25);
+  outline-offset: 3px;
+}
+
+.applications-page .applications-primary-button span {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.applications-page .applications-secondary-button {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid #d9e1ed;
+  border-radius: 9px;
+  background: #ffffff;
+  color: var(--app-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
   cursor: pointer;
+}
+
+.applications-page .applications-secondary-button:hover {
+  background: #f6f8fc;
+}
+
+.applications-page .applications-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 38px;
+}
+
+.applications-page .applications-stat-card {
+  min-width: 0;
+  padding: 21px;
+  border: 1px solid var(--app-border);
+  border-radius: 16px;
+  background: var(--app-surface);
+  box-shadow: 0 3px 12px rgba(27, 43, 72, 0.025);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.applications-page .applications-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(27, 43, 72, 0.055);
+}
+
+.applications-page .applications-stat-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 19px;
+}
+
+.applications-page .applications-stat-icon {
+  width: 37px;
+  height: 37px;
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 11px;
+  font-size: 19px;
+  font-weight: 750;
+}
+
+.applications-page .icon-blue {
+  background: #eaf0ff;
+  color: #315fd2;
+}
+
+.applications-page .icon-orange {
+  background: #fff2dd;
+  color: #b87916;
+}
+
+.applications-page .icon-green {
+  background: #e3f8ed;
+  color: #18814b;
+}
+
+.applications-page .icon-purple {
+  background: #f0eaff;
+  color: #7552c8;
+}
+
+.applications-page .applications-stat-caption {
+  color: var(--app-muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.applications-page .applications-stat-card > strong {
+  display: block;
+  overflow-wrap: anywhere;
+  color: var(--app-text);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.8px;
+  line-height: 1.25;
+}
+
+.applications-page .applications-stat-card > strong.applications-stat-amount {
+  font-size: clamp(19px, 2vw, 25px);
+  letter-spacing: -0.5px;
+}
+
+.applications-page .applications-stat-description {
+  display: block;
+  margin-top: 7px;
+  color: var(--app-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.applications-page .applications-list-section {
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: 18px;
+  background: var(--app-surface);
+  box-shadow: 0 4px 18px rgba(27, 43, 72, 0.025);
+}
+
+.applications-page .applications-list-heading {
+  min-height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 23px 26px;
+  border-bottom: 1px solid var(--app-border);
+}
+
+.applications-page .applications-list-heading h2 {
+  margin: 0;
+  color: var(--app-text);
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+
+.applications-page .applications-list-heading p {
+  margin: 7px 0 0;
+  color: var(--app-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.applications-page .applications-count {
+  flex-shrink: 0;
+  padding: 7px 11px;
+  border-radius: 8px;
+  background: #f1f4f9;
+  color: #657187;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.applications-page .applications-list {
+  padding: 0 26px;
+}
+
+.applications-page .application-card {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 17px;
+  padding: 23px 0;
+  border-bottom: 1px solid #edf0f5;
+  cursor: pointer;
+  outline: none;
+  transition: background 0.2s ease;
+}
+
+.applications-page .application-card:last-child {
+  border-bottom: 0;
+}
+
+.applications-page .application-card:hover .application-product-icon {
+  background: #e3ebff;
+  transform: scale(1.04);
+}
+
+.applications-page .application-card:hover .application-open {
+  color: var(--app-primary);
+}
+
+.applications-page .application-card:focus-visible {
+  outline: 2px solid var(--app-primary);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+.applications-page .application-product-icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 14px;
+  background: #edf2ff;
+  color: var(--app-primary);
+  font-size: 23px;
+  font-weight: 800;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.applications-page .application-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.applications-page .application-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: #8993a4;
+  font-size: 12px;
+}
+
+.applications-page .application-id {
+  color: #6c7890;
+  font-weight: 650;
+}
+
+.applications-page .application-meta-dot {
+  color: #b4bdca;
+}
+
+.applications-page .application-main h3 {
+  margin: 7px 0 8px;
+  overflow-wrap: anywhere;
+  color: var(--app-text);
+  font-size: 16px;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.applications-page .application-details {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+  color: var(--app-muted);
+  font-size: 13px;
+}
+
+.applications-page .application-amount {
+  color: #273752;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.applications-page .application-card-right {
+  min-width: 150px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.applications-page .application-status {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 11px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.applications-page .status-draft {
+  border-color: #e3e8ef;
+  background: #f2f4f7;
+  color: #5d6879;
+}
+
+.applications-page .status-scoring,
+.applications-page .status-pending {
+  border-color: #f7e5b9;
+  background: #fff6df;
+  color: #97640c;
+}
+
+.applications-page .status-approved {
+  border-color: #c8efd9;
+  background: #e6f8ee;
+  color: #167747;
+}
+
+.applications-page .status-rejected {
+  border-color: #f4d0d0;
+  background: #fff0f0;
+  color: #b43a3a;
+}
+
+.applications-page .status-default {
+  border-color: #dce4f0;
+  background: #eef3fb;
+  color: #4f6485;
+}
+
+.applications-page .application-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #7b879a;
+  font-size: 12px;
+  font-weight: 650;
+  transition: color 0.2s ease;
+}
+
+.applications-page .applications-state {
+  min-height: 270px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 36px 24px;
+  text-align: center;
+}
+
+.applications-page .applications-state > strong {
+  margin-top: 13px;
+  color: var(--app-text);
+  font-size: 16px;
+  font-weight: 750;
+}
+
+.applications-page .applications-state p {
+  max-width: 390px;
+  margin: 8px 0 18px;
+  color: var(--app-muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.applications-page .applications-loader {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e1e9fa;
+  border-top-color: var(--app-primary);
+  border-radius: 50%;
+  animation: applications-spin 0.8s linear infinite;
+}
+
+.applications-page .applications-state-icon,
+.applications-page .applications-empty-icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  background: #eef3ff;
+  color: var(--app-primary);
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.applications-page .applications-state-icon {
+  background: #fff0f0;
+  color: #b43a3a;
+}
+
+.applications-page .applications-error .applications-state-icon {
+  margin-bottom: 2px;
+}
+
+@keyframes applications-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.applications-page .applications-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 23px 2px 0;
+  color: #939daf;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  .applications-page .applications-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .applications-page .applications-container {
+    padding-top: 32px;
+  }
+
+  .applications-page .applications-stat-card {
+    padding: 19px;
+  }
+}
+
+@media (max-width: 600px) {
+  .applications-page .applications-topbar {
+    min-height: 62px;
+    grid-template-columns: 1fr auto;
+    padding: 0 16px;
+    gap: 10px;
+  }
+
+  .applications-page .applications-brand {
+    justify-self: end;
+    font-size: 12px;
+  }
+
+  .applications-page .applications-brand-mark {
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    font-size: 16px;
+  }
+
+  .applications-page .applications-topbar-label {
+    display: none;
+  }
+
+  .applications-page .applications-back {
+    font-size: 12px;
+  }
+
+  .applications-page .applications-container {
+    padding: 28px 14px 20px;
+  }
+
+  .applications-page .applications-heading {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 18px;
+    margin-bottom: 22px;
+  }
+
+  .applications-page .applications-heading h1 {
+    font-size: 30px;
+  }
+
+  .applications-page .applications-heading p {
+    font-size: 13px;
+  }
+
+  .applications-page .applications-heading .applications-primary-button {
+    width: 100%;
+  }
+
+  .applications-page .applications-stats {
+    gap: 10px;
+    margin-bottom: 26px;
+  }
+
+  .applications-page .applications-stat-card {
+    padding: 14px;
+    border-radius: 13px;
+  }
+
+  .applications-page .applications-stat-top {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 9px;
+    margin-bottom: 13px;
+  }
+
+  .applications-page .applications-stat-caption {
+    text-align: left;
+    font-size: 11px;
+  }
+
+  .applications-page .applications-stat-card > strong {
+    font-size: 25px;
+  }
+
+  .applications-page .applications-stat-card > strong.applications-stat-amount {
+    font-size: 18px;
+  }
+
+  .applications-page .applications-stat-description {
+    font-size: 11px;
+  }
+
+  .applications-page .applications-list-section {
+    border-radius: 14px;
+  }
+
+  .applications-page .applications-list-heading {
+    min-height: auto;
+    padding: 18px 15px;
+  }
+
+  .applications-page .applications-list-heading h2 {
+    font-size: 16px;
+  }
+
+  .applications-page .applications-list-heading p {
+    font-size: 12px;
+  }
+
+  .applications-page .applications-count {
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+
+  .applications-page .applications-list {
+    padding: 0 15px;
+  }
+
+  .applications-page .application-card {
+    align-items: flex-start;
+    gap: 11px;
+    padding: 19px 0;
+  }
+
+  .applications-page .application-product-icon {
+    width: 39px;
+    height: 39px;
+    border-radius: 11px;
+    font-size: 19px;
+  }
+
+  .applications-page .application-card-meta {
+    gap: 5px;
+    font-size: 10px;
+  }
+
+  .applications-page .application-main h3 {
+    margin: 6px 0;
+    font-size: 14px;
+  }
+
+  .applications-page .application-details {
+    gap: 6px;
+    font-size: 11px;
+  }
+
+  .applications-page .application-amount {
+    font-size: 12px;
+  }
+
+  .applications-page .application-card-right {
+    min-width: 0;
+    align-items: flex-end;
+    gap: 8px;
+  }
+
+  .applications-page .application-status {
+    min-height: 26px;
+    padding: 0 8px;
+    font-size: 10px;
+  }
+
+  .applications-page .application-open {
+    font-size: 10px;
+  }
+
+  .applications-page .applications-footer {
+    flex-direction: column;
+    gap: 6px;
+    padding-top: 18px;
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 380px) {
+  .applications-page .applications-brand {
+    font-size: 0;
+  }
+
+  .applications-page .application-card {
+    flex-wrap: wrap;
+  }
+
+  .applications-page .application-card-right {
+    width: 100%;
+    margin-left: 50px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
 }
