@@ -30,36 +30,61 @@ def seed():
             existing_monthly_loan_payments=Decimal("50000.00")
         )
         session.flush()
-        product = create_object(
+        product1 = create_object(
             CreditProduct,
             session,
-            name="Бизнес-старт",
-            description="Кредит для развития бизнеса",
-            min_amount=Decimal("100000.00"),
-            max_amount=Decimal("5000000.00"),
+            name="Экспресс-кредит",
+            description="Быстрые деньги на развитие бизнеса",
+            min_amount=Decimal("50000.00"),
+            max_amount=Decimal("1000000.00"),
             min_term_months=6,
-            max_term_months=60,
+            max_term_months=24,
+            annual_rate=Decimal("18.00"),
+            is_active=True
+        )
+        product2 = create_object(
+            CreditProduct,
+            session,
+            name="Кредит на оборот",
+            description="Для пополнения складских запасов",
+            min_amount=Decimal("500000.00"),
+            max_amount=Decimal("5000000.00"),
+            min_term_months=12,
+            max_term_months=36,
             annual_rate=Decimal("15.00"),
             is_active=True
         )
+        product3 = create_object(
+            CreditProduct,
+            session,
+            name="Инвестиционный",
+            description="На покупку оборудования или расширение",
+            min_amount=Decimal("1000000.00"),
+            max_amount=Decimal("10000000.00"),
+            min_term_months=24,
+            max_term_months=60,
+            annual_rate=Decimal("12.00"),
+            is_active=True
+        )
+        session.flush()
         session.flush()
 
         print("="*10)
         print("Entrepreneur ID:", entrepreneur.id)
         print("Business ID:", business.id)
-        print("Product ID:", product.id)
+        print("Product ID:", product1.id)
         print("=" * 10)
 
         print("="*10)
         print("Business ID for application:", business.id)
-        print("Product ID for application:", product.id)
+        print("Product ID for application:", product1.id)
         print("=" * 10)
 
         application = create_object(
             Application,
             session,
             business_id=business.id,
-            credit_product_id=product.id,
+            credit_product_id=product1.id,
             requested_amount=Decimal("1000000.00"),
             requested_term_months=36,
             purpose="Покупка оборудования",
