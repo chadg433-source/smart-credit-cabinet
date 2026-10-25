@@ -26,7 +26,7 @@ TRANSITIONS: dict[Status, set[Status]] = {
         Status.REJECTED,
         Status.NEED_MORE_INFO,
     },
-    Status.NEED_MORE_INFO: {Status.VALIDATION, Status.SUBMITTED},
+    Status.NEED_MORE_INFO: {Status.VALIDATION},
     Status.APPROVED: {Status.DOCUMENTS},
     Status.APPROVED_WITH_CONDITIONS: {Status.DOCUMENTS, Status.REJECTED},
     Status.DOCUMENTS: {Status.DISBURSED},
@@ -40,6 +40,6 @@ def can_transition(current: str, target: str) -> bool:
         return False
     return target_enum in TRANSITIONS.get(current_enum, set())
 
-def     assert_transition(current: str, target: str) -> None:
+def assert_transition(current: str, target: str) -> None:
     if not can_transition(current, target):
         raise ValueError(f"Недопустимый переход статуса: {current} -> {target}")

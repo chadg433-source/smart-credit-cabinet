@@ -13,4 +13,5 @@ def transition_application(app: Application, new_status: str, comment: str, db: 
         new_status=new_status,
         comment=comment
     )
+
     db.add(history)
