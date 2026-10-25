@@ -9,15 +9,13 @@ export const LoanApplication = () => {
   const navigate = useNavigate();
   const product = location.state?.product as CreditProduct;
 
-  const [amount, setAmount] = useState(product?.minAmount || 100000);
-  const [term, setTerm] = useState(product?.terms[0] || 12);
-  
-  const [revenue, setRevenue] = useState(500000);
-  const [expenses, setExpenses] = useState(200000);
-  const [loanPayments, setLoanPayments] = useState(0);
-  
+  // Берем правильные поля из бэкенда (snake_case)
+  const [amount, setAmount] = useState(product?.min_amount || 100000);
+  const [term, setTerm] = useState(product?.min_term_months || 12);
+  const [purpose, setPurpose] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Если продукт не передан — на витрину
   if (!product) {
     navigate('/products', { replace: true });
     return null;
@@ -27,21 +25,24 @@ export const LoanApplication = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await api.createApplication({ 
-        productId: product.id, 
-        amount, 
-        term,
-        financials: {
-          monthlyRevenue: revenue,
-          monthlyExpenses: expenses,
-          existingLoanPayments: loanPayments
-        }
+      // 1. Создаем заявку
+      const app = await api.createApplication({
+        business_id: "bc4fa03a-de66-47e7-b945-4a5e6317b720", // ID из сида
+        credit_product_id: product.id, // Реальный UUID продукта
+        requested_amount: amount,
+        requested_term_months: term,
+        purpose: purpose,
       });
-      navigate('/dashboard');
+
+      // 2. Сразу отправляем в банк
+      await api.submitApplication(app.id);
+
+      // 3. Переходим на статус
+      navigate(`/application/${app.id}/status`);
     } catch (error) {
       console.error(error);
-      setLoading(false);
       alert('Ошибка при создании заявки');
+      setLoading(false);
     }
   };
 
@@ -55,60 +56,38 @@ export const LoanApplication = () => {
         <form className="loan-form" onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Сумма кредита (₽)</label>
-            <input 
-              type="number" 
-              className="reg-input" 
+            <input
+              type="number"
+              className="reg-input"
               value={amount}
               onChange={(e) => setAmount(Number(e.target.value))}
-              min={product.minAmount} 
-              max={product.maxAmount} 
+              min={product.min_amount}
+              max={product.max_amount}
               required
             />
           </div>
 
           <div className="form-group">
             <label>Срок (мес.)</label>
-            <select className="reg-input" value={term} onChange={(e) => setTerm(Number(e.target.value))}>
-              {product.terms.map(t => <option key={t} value={t}>{t} мес.</option>)}
-            </select>
-          </div>
-
-          <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '10px 0' }} />
-
-          <h3 style={{ margin: '0 0 10px 0', fontSize: '18px' }}>Финансы бизнеса</h3>
-          
-          <div className="form-group">
-            <label>Средняя месячная выручка (₽)</label>
-            <input 
-              type="number" 
-              className="reg-input" 
-              value={revenue}
-              onChange={(e) => setRevenue(Number(e.target.value))}
-              min="0"
+            <input
+              type="number"
+              className="reg-input"
+              value={term}
+              onChange={(e) => setTerm(Number(e.target.value))}
+              min={product.min_term_months}
+              max={product.max_term_months}
               required
             />
           </div>
 
           <div className="form-group">
-            <label>Средние месячные расходы (₽)</label>
-            <input 
-              type="number" 
-              className="reg-input" 
-              value={expenses}
-              onChange={(e) => setExpenses(Number(e.target.value))}
-              min="0"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Текущие платежи по кредитам (₽)</label>
-            <input 
-              type="number" 
-              className="reg-input" 
-              value={loanPayments}
-              onChange={(e) => setLoanPayments(Number(e.target.value))}
-              min="0"
+            <label>Цель кредита</label>
+            <input
+              type="text"
+              className="reg-input"
+              placeholder="Например, покупка оборудования"
+              value={purpose}
+              onChange={(e) => setPurpose(e.target.value)}
               required
             />
           </div>

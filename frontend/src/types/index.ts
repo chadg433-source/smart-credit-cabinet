@@ -1,50 +1,28 @@
-// тут TypeScript-интерфейсы (Product, Application, HistoryItem)
-export type ApplicationStatus = 
-  | 'DRAFT' 
-  | 'SUBMITTED' 
-  | 'DATA_CHECK' 
-  | 'MORE_INFO_REQUIRED' 
-  | 'EXTERNAL_CHECK' 
-  | 'SCORING' 
-  | 'DECISION' 
-  | 'APPROVED' 
-  | 'DECLINED' 
-  | 'ALTERNATIVE_OFFER';
-
-export interface Product {
+// src/types/index.ts
+export interface CreditProduct {
   id: string;
   name: string;
   description: string;
-  minAmount: number;
-  maxAmount: number;
-  terms: number[]; 
-}
-
-export type CreditProduct = Product;
-
-export interface HistoryItem {
-  id: string;
-  date: string; 
-  previousStatus: ApplicationStatus | null; 
-  newStatus: ApplicationStatus; 
-  reason?: string; 
+  min_amount: number;
+  max_amount: number;
+  min_term_months: number;
+  max_term_months: number;
+  annual_rate: number;
 }
 
 export interface Application {
   id: string;
-  productId: string;
-  productName: string;
-  amount: number;
-  term: number;
-  status: ApplicationStatus;
-  createdAt: string;
-  businessName: string;
+  business_id: string;
+  credit_product_id: string;
+  requested_amount: number;
+  requested_term_months: number;
+  status: string;
+  purpose: string;
+}
 
-  financials?: {
-    monthlyRevenue: number;      
-    monthlyExpenses: number;      
-    existingLoanPayments: number;
-  };
-
-  history?: HistoryItem[];
+export interface HistoryItem {
+  old_status: string;
+  new_status: string;
+  comment: string;
+  created_at: string;
 }

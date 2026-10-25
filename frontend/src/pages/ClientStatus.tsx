@@ -71,10 +71,9 @@ export const ClientStatus = () => {
           <>
             <h2>{statusLabels[application.status]}</h2>
             <p>Номер заявки: {application.id}</p>
-            <p>Продукт: {application.productName}</p>
-            <p>Сумма: {application.amount.toLocaleString('ru-RU')} ₽</p>
-            <p>Срок: {application.term} мес.</p>
-
+            <p>Номер заявки: {application.id}</p>
+            <p>Сумма: {Number(application.requested_amount).toLocaleString('ru-RU')} ₽</p>
+            <p>Срок: {application.requested_term_months} мес.</p>
             <h3>История статусов</h3>
 
             {application.history && application.history.length > 0 ? (

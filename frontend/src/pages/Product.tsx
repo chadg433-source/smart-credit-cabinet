@@ -30,8 +30,10 @@ export const Products = () => {
             <h2>{product.name}</h2>
             <p>{product.description}</p>
             <div style={{ marginBottom: '20px', fontSize: '14px', color: '#6b7280' }}>
-              <p>Сумма: от {product.minAmount.toLocaleString()} до {product.maxAmount.toLocaleString()} ₽</p>
-              <p>Сроки: {product.terms.join(', ')} мес.</p>
+              {/* ЗАМЕНИЛИ minAmount -> min_amount, maxAmount -> max_amount */}
+              <p>Сумма: от {product.min_amount.toLocaleString()} до {product.max_amount.toLocaleString()} ₽</p>
+              {/* ЗАМЕНИЛИ terms.join -> min_term_months / max_term_months */}
+              <p>Сроки: от {product.min_term_months} до {product.max_term_months} мес.</p>
             </div>
             <button 
               className="btn-submit" 

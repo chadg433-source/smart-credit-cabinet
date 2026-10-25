@@ -1,100 +1,72 @@
-// тут все fetch запросы к FASRTAPI
+// src/api/client.ts
 import type { Product, Application, HistoryItem } from '../types';
 
-// Имитация
-const MOCK_PRODUCTS: Product[] = [
-  { id: 'p1', name: 'Экспресс-кредит', description: 'Быстрые деньги на развитие бизнеса', minAmount: 50000, maxAmount: 1000000, terms: [6, 12, 24] },
-  { id: 'p2', name: 'Кредит на оборот', description: 'Для пополнения складских запасов', minAmount: 500000, maxAmount: 5000000, terms: [12, 24, 36] },
-  { id: 'p3', name: 'Инвестиционный', description: 'На покупку оборудования или расширение', minAmount: 1000000, maxAmount: 10000000, terms: [24, 36, 60] }
-];
-
-let MOCK_APPLICATIONS: Application[] = [
-  { 
-    id: 'app-1', 
-    productId: 'p1', 
-    productName: 'Экспресс-кредит', 
-    amount: 300000, 
-    term: 12, 
-    status: 'APPROVED', 
-    createdAt: '2023-10-20', 
-    businessName: 'ООО "Ромашка"',
-    financials: { monthlyRevenue: 500000, monthlyExpenses: 200000, existingLoanPayments: 0 },
-    history: [
-      { id: 'h1', date: '2023-10-20T10:00:00', previousStatus: null, newStatus: 'DRAFT', reason: 'Заявка создана' },
-      { id: 'h2', date: '2023-10-20T10:05:00', previousStatus: 'DRAFT', newStatus: 'APPROVED', reason: 'Автоматическое одобрение по правилам' }
-    ]
-  },
-  { 
-    id: 'app-2', 
-    productId: 'p2', 
-    productName: 'Кредит на оборот', 
-    amount: 2000000, 
-    term: 24, 
-    status: 'SCORING', 
-    createdAt: '2023-10-24', 
-    businessName: 'ИП Иванов',
-    financials: { monthlyRevenue: 1500000, monthlyExpenses: 900000, existingLoanPayments: 50000 },
-    history: [
-      { id: 'h3', date: '2023-10-24T14:00:00', previousStatus: null, newStatus: 'DRAFT', reason: 'Заявка создана' },
-      { id: 'h4', date: '2023-10-24T14:05:00', previousStatus: 'DRAFT', newStatus: 'SCORING', reason: 'Запущена оценка риска' }
-    ]
-  }
-];
-
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const API_URL = "http://localhost:8000";
 
 export const api = {
-  // GET /api/products
+  // GET /products
   getProducts: async (): Promise<Product[]> => {
-    await delay(500);
-    return [...MOCK_PRODUCTS];
+    const res = await fetch(`${API_URL}/products/`);
+    if (!res.ok) throw new Error("Ошибка загрузки продуктов");
+    return res.json();
   },
 
-  // GET /api/applications
+  // GET /applications
   getApplications: async (): Promise<Application[]> => {
-    await delay(500);
-    return [...MOCK_APPLICATIONS];
+    const res = await fetch(`${API_URL}/applications/`);
+    if (!res.ok) throw new Error("Ошибка загрузки заявок");
+    return res.json();
   },
 
-  // GET /api/applications/{id}
+  // GET /applications/{id}
   getApplicationById: async (id: string): Promise<Application | null> => {
-    await delay(500);
-    const app = MOCK_APPLICATIONS.find(a => a.id === id);
-    return app ? { ...app } : null;
+    const res = await fetch(`${API_URL}/applications/${id}`);
+    if (!res.ok) return null; // Если 404, возвращаем null, как в старом коде
+    return res.json();
   },
 
-  // POST /api/applications
-  createApplication: async (data: { 
-    productId: string, 
-    amount: number, 
-    term: number,
-    financials: { monthlyRevenue: number, monthlyExpenses: number, existingLoanPayments: number }
+  // POST /applications/
+  createApplication: async (data: {
+    business_id: string;
+    credit_product_id: string;
+    requested_amount: number;
+    requested_term_months: number;
+    purpose: string;
   }): Promise<Application> => {
-    await delay(800);
-    const product = MOCK_PRODUCTS.find(p => p.id === data.productId);
-    
-    const initialHistory: HistoryItem = {
-      id: `h-${Date.now()}`,
-      date: new Date().toISOString(),
-      previousStatus: null,
-      newStatus: 'DRAFT',
-      reason: 'Заявка создана и сохранена как черновик'
-    };
+    const res = await fetch(`${API_URL}/applications/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Ошибка создания заявки");
+    return res.json();
+  },
 
-    const newApp: Application = {
-      id: `app-${Date.now()}`,
-      productId: data.productId,
-      productName: product ? product.name : 'Неизвестный продукт',
-      amount: data.amount,
-      term: data.term,
-      status: 'DRAFT',
-      createdAt: new Date().toISOString().split('T')[0],
-      businessName: 'Мой Бизнес',
-      financials: data.financials,
-      history: [initialHistory]
-    };
+  // POST /applications/{id}/submit
+  submitApplication: async (id: string): Promise<Application> => {
+    const res = await fetch(`${API_URL}/applications/${id}/submit`, { method: "POST" });
+    if (!res.ok) throw new Error("Ошибка отправки заявки");
+    return res.json();
+  },
 
-    MOCK_APPLICATIONS = [newApp, ...MOCK_APPLICATIONS];
-    return newApp;
+  // GET /applications/{id}/history
+  getHistory: async (id: string): Promise<HistoryItem[]> => {
+    const res = await fetch(`${API_URL}/applications/${id}/history`);
+    if (!res.ok) throw new Error("Ошибка загрузки истории");
+    return res.json();
+  },
+
+  // POST /applications/{id}/process
+  processApplication: async (id: string): Promise<Application> => {
+    const res = await fetch(`${API_URL}/applications/${id}/process`, { method: "POST" });
+    if (!res.ok) throw new Error("Ошибка обработки заявки");
+    return res.json();
+  },
+
+  // GET /applications/bank/queue
+  getBankQueue: async (): Promise<any[]> => {
+    const res = await fetch(`${API_URL}/applications/bank/queue`);
+    if (!res.ok) throw new Error("Ошибка загрузки очереди");
+    return res.json();
   }
 };
