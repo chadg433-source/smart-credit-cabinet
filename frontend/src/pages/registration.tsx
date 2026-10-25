@@ -32,7 +32,13 @@ export const RegistrationCard: React.FC<RegistrationCardProps> = ({ onSuccess })
                   <form className="reg-form" onSubmit={handleSubmit}>
                     <h1>Регистрация</h1>
                     <p>Создайте аккаунт для доступа к системе.</p>
-                    <a href={alfaAuthLink} className="btn-submit">Войти через Альфа-Банк</a>
+                    <button
+                    type="button"
+                    className="btn-submit"
+                    onClick={() => { if (onSuccess) onSuccess(); }}
+                  >
+                    Войти через Альфа-Банк
+                  </button>
                   </form>
                 )}
               </div>
