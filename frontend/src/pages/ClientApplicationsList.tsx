@@ -1,4 +1,3 @@
-// тут все заявки одного клиента
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
@@ -75,8 +74,8 @@ export const ClientApplicationsList = () => {
     };
   }, []);
 
-  const stats = useMemo(() => {
-    return {
+  const stats = useMemo(
+    () => ({
       total: applications.length,
       review: applications.filter((app) =>
         ['SCORING', 'PENDING'].includes(app.status.toUpperCase()),
@@ -85,48 +84,36 @@ export const ClientApplicationsList = () => {
         (app) => app.status.toUpperCase() === 'APPROVED',
       ).length,
       totalAmount: applications.reduce((sum, app) => sum + app.amount, 0),
-    };
-  }, [applications]);
+    }),
+    [applications],
+  );
 
   const openApplication = (id: string) => {
     navigate(`/application/${id}/status`);
   };
 
+  const openProductCatalog = () => {
+    navigate('/products');
+  };
+
   return (
     <main className="applications-page">
-      <header className="applications-topbar">
-        <button
-          className="applications-back"
-          type="button"
-          onClick={() => navigate('/home')}
-        >
-          <span aria-hidden="true">←</span>
-          <span>На главную</span>
-        </button>
-
-        <div className="applications-brand">
-          <span className="applications-brand-mark">К</span>
-          <span>Кредитный кабинет</span>
-        </div>
-
-        <div className="applications-topbar-label">Мой бизнес</div>
-      </header>
-
       <div className="applications-container">
         <section className="applications-heading">
           <div>
-            <div className="applications-eyebrow">ЛИЧНЫЙ КАБИНЕТ</div>
             <h1>Мои заявки</h1>
-            <p>Отслеживайте состояние заявок и управляйте кредитованием бизнеса.</p>
+            <p>
+              Отслеживайте состояние заявок и управляйте кредитованием бизнеса.
+            </p>
           </div>
 
           <button
             className="applications-primary-button"
             type="button"
-            onClick={() => navigate('/application/new')}
+            onClick={openProductCatalog}
           >
             <span aria-hidden="true">＋</span>
-            Новая заявка
+            Добавить заявку
           </button>
         </section>
 
@@ -146,7 +133,9 @@ export const ClientApplicationsList = () => {
               <span className="applications-stat-caption">В процессе</span>
             </div>
             <strong>{stats.review}</strong>
-            <span className="applications-stat-description">Ожидают решения</span>
+            <span className="applications-stat-description">
+              Ожидают решения
+            </span>
           </article>
 
           <article className="applications-stat-card">
@@ -155,7 +144,9 @@ export const ClientApplicationsList = () => {
               <span className="applications-stat-caption">Одобрено</span>
             </div>
             <strong>{stats.approved}</strong>
-            <span className="applications-stat-description">Положительные решения</span>
+            <span className="applications-stat-description">
+              Положительные решения
+            </span>
           </article>
 
           <article className="applications-stat-card">
@@ -166,7 +157,9 @@ export const ClientApplicationsList = () => {
             <strong className="applications-stat-amount">
               {formatAmount(stats.totalAmount)}
             </strong>
-            <span className="applications-stat-description">По всем заявкам</span>
+            <span className="applications-stat-description">
+              По всем заявкам
+            </span>
           </article>
         </section>
 
@@ -176,6 +169,7 @@ export const ClientApplicationsList = () => {
               <h2>История заявок</h2>
               <p>Выберите заявку, чтобы посмотреть подробности.</p>
             </div>
+
             {!loading && (
               <span className="applications-count">
                 {applications.length} шт.
@@ -206,13 +200,15 @@ export const ClientApplicationsList = () => {
             <div className="applications-state">
               <span className="applications-empty-icon">▤</span>
               <strong>Пока нет заявок</strong>
-              <p>Создайте первую заявку, чтобы начать работу с кредитным кабинетом.</p>
+              <p>
+                Создайте первую заявку, чтобы начать работу с кредитным кабинетом.
+              </p>
               <button
                 className="applications-primary-button"
                 type="button"
-                onClick={() => navigate('/application/new')}
+                onClick={openProductCatalog}
               >
-                Создать заявку
+                Выбрать продукт
               </button>
             </div>
           ) : (
@@ -257,7 +253,9 @@ export const ClientApplicationsList = () => {
                     </div>
 
                     <div className="application-card-right">
-                      <span className={`application-status status-${status.className}`}>
+                      <span
+                        className={`application-status status-${status.className}`}
+                      >
                         <span aria-hidden="true">{status.icon}</span>
                         {status.label}
                       </span>

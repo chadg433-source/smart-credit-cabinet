@@ -384,3 +384,16 @@
     padding: 14px 16px;
   }
 }
+.registration-modal .btn,
+.registration-modal .btn-submit {
+  background: #b5121b !important;
+  border: 1px solid #b5121b !important;
+  color: #fff !important;
+}
+
+.registration-modal .btn:hover,
+.registration-modal .btn-submit:hover {
+  background: #8f0d15 !important;
+  border-color: #8f0d15 !important;
+  color: #fff !important;
+}

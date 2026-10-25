@@ -8,6 +8,7 @@ import { ClientStatus } from './pages/ClientStatus';
 import { ClientDecision } from './pages/ClientDecision';
 import { Documents } from './pages/Documents';
 import { Products } from './pages/Product';
+import { Header } from './components/Header';
 
 function RegistrationGate() {
   const navigate = useNavigate();
@@ -23,48 +24,52 @@ function RegistrationGate() {
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<RegistrationGate />} />
+    <div className="app-layout">
+      <Header />
 
-      <Route
-        path="/dashboard"
-        element={<Navigate to="/applications" replace />}
-      />
+      <Routes>
+        <Route path="/" element={<RegistrationGate />} />
 
-      <Route
-        path="/home"
-        element={<Navigate to="/applications" replace />}
-      />
+        <Route
+          path="/dashboard"
+          element={<Navigate to="/applications" replace />}
+        />
 
-      <Route
-        path="/applications"
-        element={<ClientApplicationsList />}
-      />
+        <Route
+          path="/home"
+          element={<Navigate to="/applications" replace />}
+        />
 
-      <Route path="/products" element={<Products />} />
+        <Route
+          path="/applications"
+          element={<ClientApplicationsList />}
+        />
 
-      <Route
-        path="/application/new"
-        element={<LoanApplication />}
-      />
+        <Route path="/products" element={<Products />} />
 
-      <Route
-        path="/application/:id/status"
-        element={<ClientStatus />}
-      />
+        <Route
+          path="/application/new"
+          element={<LoanApplication />}
+        />
 
-      <Route
-        path="/application/:id/decision"
-        element={<ClientDecision />}
-      />
+        <Route
+          path="/application/:id/status"
+          element={<ClientStatus />}
+        />
 
-      <Route path="/documents" element={<Documents />} />
+        <Route
+          path="/application/:id/decision"
+          element={<ClientDecision />}
+        />
 
-      <Route
-        path="*"
-        element={<Navigate to="/" replace />}
-      />
-    </Routes>
+        <Route path="/documents" element={<Documents />} />
+
+        <Route
+          path="*"
+          element={<Navigate to="/" replace />}
+        />
+      </Routes>
+    </div>
   );
 }
 

@@ -22,7 +22,6 @@ export const Products = () => {
     <div className="dashboard-page">
       <div className="dashboard-header" style={{ width: '100%', maxWidth: '1000px' }}>
         <h1>Каталог продуктов</h1>
-        <button className="logout-btn" onClick={() => navigate('/dashboard')}>Назад</button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', width: '100%', maxWidth: '1000px' }}>

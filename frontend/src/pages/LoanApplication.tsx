@@ -19,14 +19,8 @@ export const LoanApplication = () => {
   const [loading, setLoading] = useState(false);
 
   if (!product) {
-    return (
-      <div className="dashboard-page">
-        <h2>Продукт не выбран</h2>
-        <button className="btn-submit" style={{ marginTop: '20px' }} onClick={() => navigate('/products')}>
-          Вернуться в каталог
-        </button>
-      </div>
-    );
+    navigate('/products', { replace: true });
+    return null;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -55,7 +49,6 @@ export const LoanApplication = () => {
     <div className="dashboard-page">
       <div className="dashboard-header" style={{ width: '100%', maxWidth: '600px' }}>
         <h1>Заявка: {product.name}</h1>
-        <button className="logout-btn" onClick={() => navigate('/products')}>Отмена</button>
       </div>
 
       <div className="loan-card">
