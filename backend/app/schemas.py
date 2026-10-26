@@ -11,6 +11,11 @@ class ApplicationCreate(BaseModel):
     purpose: str | None = Field(None, description="Цель кредита")
     model_config = ConfigDict(from_attributes=True)
 
+class ApplicationUpdate(BaseModel):
+    requested_amount: Decimal = Field(..., gt=0)
+    requested_term_months: int = Field(..., gt=0)
+    purpose: str = Field(..., min_length=1, max_length=255)
+
 class ApplicationResponse(ApplicationCreate):
     id: UUID
     status: str

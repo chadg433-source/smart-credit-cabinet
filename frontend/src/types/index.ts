@@ -23,6 +23,12 @@ export interface Application {
 
 }
 
+export interface ApplicationUpdate {
+  requested_amount: number;
+  requested_term_months: number;
+  purpose: string;
+}
+
 export interface HistoryItem {
   old_status: ApplicationStatus;
   new_status: ApplicationStatus;

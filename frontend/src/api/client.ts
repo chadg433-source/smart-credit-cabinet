@@ -2,6 +2,7 @@
 import type {
   CreditProduct,
   Application,
+  ApplicationUpdate,
   HistoryItem,
   Business,
 } from '../types';
@@ -105,6 +106,16 @@ export const api = {
   }): Promise<Application> =>
     request<Application>('/applications/', {
       method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // PATCH /applications/{id}
+  updateApplication: (
+    id: string,
+    data: ApplicationUpdate,
+  ): Promise<Application> =>
+    request<Application>(`/applications/${id}`, {
+      method: 'PATCH',
       body: JSON.stringify(data),
     }),
 

@@ -7,9 +7,9 @@ from app.database import get_db
 from app.models import (
     Application,
     ApplicationStatusHistory,
-    Business
+    Business, CreditProduct
 )
-from app.schemas import ApplicationCreate, ApplicationResponse
+from app.schemas import ApplicationCreate, ApplicationResponse, ApplicationUpdate
 from app.services.application_processing import process_application_service
 from app.services.state_machine import Status
 
@@ -105,6 +105,80 @@ def get_bank_queue(
         }
         for app, business_name in results
     ]
+@router.patch("/{application_id}", response_model=ApplicationResponse)
+def update_application(
+    application_id: UUID,
+    app_in: ApplicationUpdate,
+    db: Session = Depends(get_db),
+):
+    app = (
+        db.query(Application)
+        .options(joinedload(Application.product))
+        .filter(Application.id == application_id)
+        .first()
+    )
+
+    if app is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Заявка не найдена",
+        )
+
+    if app.status != Status.NEED_MORE_INFO.value:
+        raise HTTPException(
+            status_code=400,
+            detail="Редактировать можно только заявку, требующую дополнительной информации",
+        )
+
+    product = (
+        db.query(CreditProduct)
+        .filter(CreditProduct.id == app.credit_product_id)
+        .first()
+    )
+
+    if product is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Кредитный продукт не найден",
+        )
+
+    if not (
+        product.min_amount
+        <= app_in.requested_amount
+        <= product.max_amount
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Сумма кредита выходит за допустимые пределы продукта",
+        )
+
+    if not (
+        product.min_term_months
+        <= app_in.requested_term_months
+        <= product.max_term_months
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Срок кредита выходит за допустимые пределы продукта",
+        )
+
+    app.requested_amount = app_in.requested_amount
+    app.requested_term_months = app_in.requested_term_months
+    app.purpose = app_in.purpose.strip()
+
+    if not app.purpose:
+        raise HTTPException(
+            status_code=400,
+            detail="Укажите цель кредита",
+        )
+
+    try:
+        commit_changes(db, app)
+    except Exception:
+        db.rollback()
+        raise
+
+    return to_application_response(app)
 
 @router.post("/{application_id}/submit", response_model=ApplicationResponse)
 def submit_application(

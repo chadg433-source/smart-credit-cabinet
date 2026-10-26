@@ -52,6 +52,9 @@ function App() {
           element={<LoanApplication />}
         />
 
+        <Route path="/application/:id/edit"
+               element={<LoanApplication />} />
+
         <Route
           path="/application/:id/status"
           element={<ClientStatus />}

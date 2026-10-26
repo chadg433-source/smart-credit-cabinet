@@ -104,7 +104,16 @@ export const ClientStatus = () => {
             ) : (
               <p>История переходов пока отсутствует.</p>
             )}
-
+            {application.status === 'NEED_MORE_INFO' && (
+              <button
+                type="button"
+                className="btn-submit"
+                style={{ marginTop: '20px' }}
+                onClick={() => navigate(`/application/${application.id}/edit`)}
+              >
+                Дополнить и отправить повторно
+              </button>
+            )}
             <button
               className="btn-submit"
               style={{ marginTop: '20px' }}
