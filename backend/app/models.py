@@ -3,7 +3,7 @@ from datetime import datetime, timezone, date
 from decimal import Decimal
 from sqlalchemy import DateTime, String, ForeignKey, Numeric, Date, Text, Integer, Boolean, CheckConstraint
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 class Entrepreneur(Base):
@@ -145,6 +145,9 @@ class Application(Base):
         UUID(as_uuid=True),
         ForeignKey('credit_products.id'),
         nullable=False
+    )
+    product: Mapped["CreditProduct"] = relationship(
+        "CreditProduct"
     )
     requested_amount: Mapped[Decimal] = mapped_column(
         Numeric(15, 2),

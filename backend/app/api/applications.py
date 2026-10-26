@@ -1,24 +1,34 @@
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.api.record_change import commit_changes
 from app.api.application_service import transition_application
 from app.database import get_db
 from app.models import (
     Application,
     ApplicationStatusHistory,
-    Business,
-    CreditDecision,
-    CreditProduct,
-    ScoringResult,
+    Business
 )
 from app.schemas import ApplicationCreate, ApplicationResponse
-from app.services.external_checks import run_external_checks
-from app.services.scoring import calculate_scoring
+from app.services.application_processing import process_application_service
 from app.services.state_machine import Status
 
 
 router = APIRouter(prefix="/applications", tags=["Applications"])
+
+
+def to_application_response(app: Application) -> ApplicationResponse:
+    return ApplicationResponse(
+        id=app.id,
+        business_id=app.business_id,
+        credit_product_id=app.credit_product_id,
+        requested_amount=app.requested_amount,
+        requested_term_months=app.requested_term_months,
+        purpose=app.purpose,
+        status=app.status,
+        product_name=app.product.name,
+        created_at=app.created_at,
+    )
 
 
 @router.post("/", response_model=ApplicationResponse)
@@ -37,16 +47,30 @@ def create_application(
 
     db.add(new_app)
     commit_changes(db, new_app)
-    return new_app
-
+    return to_application_response(new_app)
 
 @router.get("/", response_model=list[ApplicationResponse])
 def get_applications(db: Session = Depends(get_db)):
-    return db.query(Application).all()
+    applications = (
+        db.query(Application)
+        .options(joinedload(Application.product))
+        .all()
+    )
 
-
-# Статические маршруты располагаем перед маршрутами с application_id.
-
+    return [
+        {
+            "id": app.id,
+            "business_id": app.business_id,
+            "credit_product_id": app.credit_product_id,
+            "requested_amount": app.requested_amount,
+            "requested_term_months": app.requested_term_months,
+            "purpose": app.purpose,
+            "status": app.status,
+            "created_at": app.created_at,
+            "product_name": app.product.name,
+        }
+        for app in applications
+    ]
 
 @router.get("/bank/queue")
 def get_bank_queue(
@@ -103,7 +127,7 @@ def submit_application(
         if app.status == Status.NEED_MORE_INFO.value:
             transition_application(
                 app,
-                Status.VALIDATION.value,  # Сначала возвращаем на валидацию
+                Status.VALIDATION.value,
                 "Повторная проверка после догрузки данных",
                 db,
             )
@@ -132,7 +156,19 @@ def submit_application(
         db.rollback()
         raise
 
-    return app
+    try:
+        app = process_application_service(app, db)
+        return to_application_response(app)
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+    except Exception:
+        db.rollback()
+        raise
+
 
 
 @router.post("/{application_id}/process", response_model=ApplicationResponse)
@@ -146,173 +182,25 @@ def process_application(
         .first()
     )
 
-    if not app:
+    if app is None:
         raise HTTPException(
             status_code=404,
             detail="Заявка не найдена",
         )
 
-    resumable_statuses = {
-        Status.SUBMITTED.value,
-        Status.NEED_MORE_INFO.value,
-        Status.VALIDATION.value,
-        Status.EXTERNAL_CHECKS.value,
-        Status.SCORING.value,
-        Status.DECISION_PENDING.value
-    }
-
-    if app.status not in resumable_statuses:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Заявку в статусе {app.status} нельзя обработать",
-        )
-
     try:
-        if app.status in {
-            Status.SUBMITTED.value,
-            Status.NEED_MORE_INFO.value,
-        }:
-            transition_application(
-                app,
-                Status.VALIDATION.value,
-                "Проверка данных заявки",
-                db,
-            )
-            commit_changes(db, app)
-
-        business = (
-            db.query(Business)
-            .filter(Business.id == app.business_id)
-            .first()
+        return to_application_response(
+            process_application_service(app, db)
         )
-
-        if not business:
-            raise HTTPException(
-                status_code=404,
-                detail="Компания, связанная с заявкой, не найдена",
-            )
-
-        product = (
-            db.query(CreditProduct)
-            .filter(CreditProduct.id == app.credit_product_id)
-            .first()
-        )
-
-        if not product:
-            raise HTTPException(
-                status_code=404,
-                detail="Кредитный продукт не найден",
-            )
-
-        if app.status == Status.VALIDATION.value:
-            transition_application(
-                app,
-                Status.EXTERNAL_CHECKS.value,
-                "Запущены внешние проверки",
-                db,
-            )
-            commit_changes(db, app)
-
-        if app.status == Status.EXTERNAL_CHECKS.value:
-            checks_result = run_external_checks(str(app.business_id))
-
-            if not checks_result["is_all_passed"]:
-                transition_application(
-                    app,
-                    Status.NEED_MORE_INFO.value,
-                    "Внешние проверки не пройдены",
-                    db,
-                )
-                commit_changes(db, app)
-                return app
-
-            transition_application(
-                app,
-                Status.SCORING.value,
-                "Вычисление скоринга",
-                db,
-            )
-            commit_changes(db, app)
-
-        if app.status in {
-            Status.SCORING.value,
-            Status.DECISION_PENDING.value,
-        }:
-            scoring_data = calculate_scoring(
-                business,
-                product,
-                app.requested_amount,
-            )
-
-            if app.status == Status.SCORING.value:
-                transition_application(
-                    app,
-                    Status.DECISION_PENDING.value,
-                    "Скоринг завершён, подготовлено решение",
-                    db,
-                )
-
-            scoring_result = ScoringResult(
-                application_id=app.id,
-                total_score=scoring_data["total_score"],
-                financial_stability_score=scoring_data["total_score"],
-                payment_capacity_score=scoring_data["total_score"],
-                business_age_score=scoring_data["total_score"],
-                external_checks_score=scoring_data["total_score"],
-                input_snapshot="{}",
-            )
-            db.add(scoring_result)
-
-            decision = scoring_data["decision"]
-
-            allowed_decisions = {
-                Status.APPROVED.value,
-                Status.APPROVED_WITH_CONDITIONS.value,
-                Status.REJECTED.value,
-                Status.NEED_MORE_INFO.value,
-            }
-
-            if decision not in allowed_decisions:
-                raise ValueError(
-                    f"Скоринг вернул неизвестное решение: {decision}"
-                )
-
-            decision_result = CreditDecision(
-                application_id=app.id,
-                decision=decision,
-                reason=scoring_data["reason"],
-                offered_amount=scoring_data["offered_amount"],
-                offered_term_months=app.requested_term_months,
-                offered_rate=product.annual_rate,
-            )
-            db.add(decision_result)
-
-            transition_application(
-                app,
-                decision,
-                scoring_data["reason"],
-                db,
-            )
-
-            commit_changes(db, app)
-
-    except HTTPException:
-        db.rollback()
-        raise
-
     except ValueError as exc:
         db.rollback()
         raise HTTPException(
             status_code=400,
             detail=str(exc),
         ) from exc
-
     except Exception:
         db.rollback()
         raise
-
-    return app
-
 
 @router.get("/{application_id}/history")
 def get_application_history(
@@ -400,7 +288,7 @@ def sign_documents(
         db.rollback()
         raise
 
-    return app
+    return to_application_response(app)
 
 
 @router.post("/{application_id}/disburse", response_model=ApplicationResponse)
@@ -450,7 +338,7 @@ def disburse_application(
         db.rollback()
         raise
 
-    return app
+    return to_application_response(app)
 
 
 @router.get("/{application_id}", response_model=ApplicationResponse)
@@ -470,4 +358,4 @@ def get_application(
             detail="Заявка не найдена",
         )
 
-    return app
+    return to_application_response(app)

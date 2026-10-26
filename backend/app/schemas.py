@@ -16,6 +16,8 @@ class ApplicationResponse(ApplicationCreate):
     status: str
     requested_amount:Decimal
     purpose: str
+    product_name: str
+    created_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
 
