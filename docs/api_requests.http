@@ -1,0 +1,60 @@
+### 1. Авторизация (Получить JWT токен)
+POST http://localhost:8000/auth/demo-login
+Content-Type: application/json
+
+> {%
+    client.global.set("auth_token", response.body.access_token);
+%}
+
+### 2. Получить профиль пользователя (Проверка токена)
+GET http://localhost:8000/auth/me
+Authorization: Bearer {{auth_token}}
+
+### 3. Получить список бизнесов
+GET http://localhost:8000/businesses/
+Authorization: Bearer {{auth_token}}
+
+### 4. Получить список кредитных продуктов
+GET http://localhost:8000/products/
+Authorization: Bearer {{auth_token}}
+
+### 5. Создать кредитную заявку
+POST http://localhost:8000/applications/
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "business_id": "a1b8de91-8d55-49b8-9e7b-8bda0983d697",
+  "credit_product_id": "6f41de33-1393-41e3-bef3-d623a743e711",
+  "requested_amount": 1000000,
+  "requested_term_months": 36,
+  "purpose": "Покупка оборудования"
+}
+
+> {%
+    client.global.set("application_id", response.body.id);
+%}
+
+### 6. Отправить заявку и запустить конвейер (Валидация -> Проверки -> Скоринг -> Решение)
+POST http://localhost:8000/applications/{{application_id}}/submit
+Authorization: Bearer {{auth_token}}
+
+### 7. Посмотреть историю смены статусов
+GET http://localhost:8000/applications/{{application_id}}/history
+Authorization: Bearer {{auth_token}}
+
+### 8. Подписать документы (только если статус APPROVED)
+POST http://localhost:8000/applications/{{application_id}}/documents
+Authorization: Bearer {{auth_token}}
+
+### 9. Выдать кредит (только если статус DOCUMENTS)
+POST http://localhost:8000/applications/{{application_id}}/disburse
+Authorization: Bearer {{auth_token}}
+
+### 10. Проверить статус LLM (работает только если запущен профиль llm)
+GET http://localhost:8000/llm/status
+Authorization: Bearer {{auth_token}}
+
+### 11. Получить объяснение от LLM (по заявке с решением)
+POST http://localhost:8000/applications/{{application_id}}/explain
+Authorization: Bearer {{auth_token}}

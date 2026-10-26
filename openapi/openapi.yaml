@@ -1,0 +1,165 @@
+openapi: 3.0.0
+info:
+  title: Smart Credit Cabinet API
+  version: 2.0.0
+  description: API для цифрового кредитного конвейера ММБ с JWT-авторизацией.
+paths:
+  /auth/demo-login:
+    post:
+      summary: Авторизация демо-пользователя
+      responses:
+        '200':
+          description: Успешный вход
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  token_type:
+                    type: string
+  /auth/me:
+    get:
+      summary: Получить профиль текущего пользователя
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Профиль пользователя
+  /businesses/:
+    get:
+      summary: Получить список бизнесов текущего пользователя
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Список бизнесов
+  /applications/:
+    post:
+      summary: Создать заявку
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationCreate'
+      responses:
+        '200':
+          description: Заявка создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationResponse'
+  /applications/{application_id}/submit:
+    post:
+      summary: Отправить заявку и запустить обработку
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: application_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Заявка обработана
+  /applications/{application_id}/documents:
+    post:
+      summary: Подписать документы
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: application_id
+          in: path
+          required: true
+          schema:
+            type: string
+  /applications/{application_id}/disburse:
+    post:
+      summary: Выдать кредит
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: application_id
+          in: path
+          required: true
+          schema:
+            type: string
+  /applications/{application_id}/explain:
+    post:
+      summary: Получить объяснение решения от LLM
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: application_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  text:
+                    type: string
+                  source:
+                    type: string
+                    enum: [llm, fallback]
+                  model:
+                    type: string
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ApplicationCreate:
+      type: object
+      properties:
+        business_id:
+          type: string
+          format: uuid
+        credit_product_id:
+          type: string
+          format: uuid
+        requested_amount:
+          type: number
+        requested_term_months:
+          type: integer
+        purpose:
+          type: string
+    ApplicationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        business_id:
+          type: string
+          format: uuid
+        credit_product_id:
+          type: string
+          format: uuid
+        requested_amount:
+          type: number
+        requested_term_months:
+          type: integer
+        purpose:
+          type: string
+        status:
+          type: string
+        product_name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
