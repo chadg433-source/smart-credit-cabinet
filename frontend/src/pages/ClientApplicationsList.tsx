@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import type { Application } from '../types';
+import { getStatusLabel } from '../utils/statusLabels';
 
 const formatAmount = (amount: number) =>
   new Intl.NumberFormat('ru-RU', {
@@ -10,11 +11,9 @@ const formatAmount = (amount: number) =>
 
 const formatDate = (date: string) => {
   const parsedDate = new Date(date);
-
   if (Number.isNaN(parsedDate.getTime())) {
     return date;
   }
-
   return new Intl.DateTimeFormat('ru-RU', {
     day: '2-digit',
     month: 'long',
@@ -22,22 +21,30 @@ const formatDate = (date: string) => {
   }).format(parsedDate);
 };
 
-const getStatusInfo = (status: string) => {
+// Определяем только иконку и цвет, а текст берем из getStatusLabel
+const getStatusStyle = (status: string) => {
   const normalized = status.toUpperCase();
-
   switch (normalized) {
     case 'DRAFT':
-      return { label: 'Черновик', className: 'draft', icon: '✎' };
+      return { className: 'draft', icon: '✎' };
+    case 'SUBMITTED':
+    case 'VALIDATION':
+    case 'EXTERNAL_CHECKS':
     case 'SCORING':
-      return { label: 'На рассмотрении', className: 'scoring', icon: '◷' };
+    case 'DECISION_PENDING':
+      return { className: 'scoring', icon: '◷' };
     case 'APPROVED':
-      return { label: 'Одобрена', className: 'approved', icon: '✓' };
+    case 'APPROVED_WITH_CONDITIONS':
+      return { className: 'approved', icon: '✓' };
     case 'REJECTED':
-      return { label: 'Отказ', className: 'rejected', icon: '×' };
-    case 'PENDING':
-      return { label: 'Ожидает решения', className: 'pending', icon: '◷' };
+      return { className: 'rejected', icon: '×' };
+    case 'NEED_MORE_INFO':
+      return { className: 'pending', icon: '!' };
+    case 'DOCUMENTS':
+    case 'DISBURSED':
+      return { className: 'approved', icon: '✓' };
     default:
-      return { label: status, className: 'default', icon: '•' };
+      return { className: 'default', icon: '•' };
   }
 };
 
@@ -78,12 +85,12 @@ export const ClientApplicationsList = () => {
     () => ({
       total: applications.length,
       review: applications.filter((app) =>
-        ['SCORING', 'PENDING'].includes(app.status.toUpperCase()),
+        ['SUBMITTED', 'SCORING', 'PENDING', 'VALIDATION', 'EXTERNAL_CHECKS'].includes(app.status.toUpperCase()),
       ).length,
       approved: applications.filter(
-        (app) => app.status.toUpperCase() === 'APPROVED',
+        (app) => ['APPROVED', 'APPROVED_WITH_CONDITIONS', 'DISBURSED'].includes(app.status.toUpperCase()),
       ).length,
-      totalAmount: applications.reduce((sum, app) => sum + app.requested_amount, 0),
+      totalAmount: applications.reduce((sum, app) => sum + Number(app.requested_amount), 0),
     }),
     [applications],
   );
@@ -214,7 +221,7 @@ export const ClientApplicationsList = () => {
           ) : (
             <div className="applications-list">
               {applications.map((app) => {
-                const status = getStatusInfo(app.status);
+                const style = getStatusStyle(app.status);
 
                 return (
                   <article
@@ -241,7 +248,7 @@ export const ClientApplicationsList = () => {
                         <span>{formatDate(app.created_at)}</span>
                       </div>
 
-                      <h3>{app.product_name}</h3>
+                      <h3>{app.credit_product_id}</h3>
 
                       <div className="application-details">
                         <span className="application-amount">
@@ -254,10 +261,10 @@ export const ClientApplicationsList = () => {
 
                     <div className="application-card-right">
                       <span
-                        className={`application-status status-${status.className}`}
+                        className={`application-status status-${style.className}`}
                       >
-                        <span aria-hidden="true">{status.icon}</span>
-                        {status.label}
+                        <span aria-hidden="true">{style.icon}</span>
+                        {getStatusLabel(app.status)}
                       </span>
                       <span className="application-open">
                         Подробнее <span aria-hidden="true">→</span>

@@ -1,8 +1,8 @@
-// тут результат и условия кредита
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import type { Application } from '../types';
+import { getStatusLabel } from '../utils/statusLabels';
 
 export const ClientDecision = () => {
   const { id } = useParams();
@@ -48,7 +48,7 @@ export const ClientDecision = () => {
   return (
     <div className="dashboard-page">
       <div className="dashboard-header" style={{ width: '100%', maxWidth: '800px' }}>
-        <h1>Решение по заявке {id}</h1>
+        <h1>Решение по заявке {id?.slice(0, 8)}</h1>
       </div>
 
       <div className="loan-card">
@@ -73,15 +73,15 @@ export const ClientDecision = () => {
                   : 'Одобрено с условиями'}
             </h2>
             <p>Номер заявки: {application.id}</p>
-            <p>Продукт: {application.product_name}</p>
-            <p>Сумма заявки: {application.requested_amount.toLocaleString('ru-RU')} ₽</p>
+            <p>Продукт: {application.credit_product_id}</p>
+            <p>Сумма заявки: {Number(application.requested_amount).toLocaleString('ru-RU')} ₽</p>
             <p>Срок: {application.requested_term_months} мес.</p>
           </>
         ) : (
           <>
             <h2>Решение пока не принято</h2>
             <p>
-              Текущий статус заявки: {application.status}
+              Текущий статус заявки: {getStatusLabel(application.status)}
             </p>
             <p>Вернись сюда позже, когда обработка заявки завершится.</p>
           </>
