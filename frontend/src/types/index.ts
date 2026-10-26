@@ -30,6 +30,16 @@ export interface HistoryItem {
   created_at: string;
 }
 
+export type Business = {
+  id: string;
+  name: string;
+  tax_id: string;
+  business_type: string;
+  monthly_revenue: number;
+  monthly_expenses: number;
+  existing_monthly_loan_payments: number;
+};
+
 export type ApplicationStatus =
   | 'DRAFT'
   | 'SUBMITTED'

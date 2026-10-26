@@ -1,5 +1,6 @@
 
-import React from 'react';
+import React, { useState } from 'react';
+import { api } from '../api/client';
 import { useCardController } from '../controller/Controller.ts';
 
 interface RegistrationCardProps {
@@ -10,10 +11,28 @@ export const RegistrationCard: React.FC<RegistrationCardProps> = ({
   onSuccess,
 }) => {
   const { isRegistering, handleOpenRegistration } = useCardController();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    onSuccess?.();
+
+    setLoading(true);
+    setError('');
+
+    try {
+      await api.demoLogin();
+      await api.getMe();
+      onSuccess?.();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Не удалось войти в систему',
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -49,22 +68,23 @@ export const RegistrationCard: React.FC<RegistrationCardProps> = ({
                         </p>
                       </>
                     ) : (
-                      <form
-                        className="reg-form"
-                        onSubmit={handleSubmit}
-                      >
-                        <h1 id="registration-title">Регистрация</h1>
+                      <form className="reg-form" onSubmit={handleSubmit}>
+                        <h1 id="registration-title">Вход в демо-кабинет</h1>
 
                         <p>
-                          Создайте аккаунт для доступа к системе.
+                          Войдите, чтобы получить доступ к демонстрационному
+                          кабинету предпринимателя.
                         </p>
+
+                        {error && <p role="alert">{error}</p>}
 
                         <button
                           type="submit"
                           className="btn-submit"
                           style={{ marginTop: '10px' }}
+                          disabled={loading}
                         >
-                          Зарегистрироваться через Альфа-Банк
+                          {loading ? 'Выполняется вход...' : 'Войти через демо-пользователя'}
                         </button>
                       </form>
                     )}
