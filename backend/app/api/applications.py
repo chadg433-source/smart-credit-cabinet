@@ -12,6 +12,11 @@ from app.models import (
 from app.schemas import ApplicationCreate, ApplicationResponse, ApplicationUpdate
 from app.services.application_processing import process_application_service
 from app.services.state_machine import Status
+from fastapi import File, Form, UploadFile
+from pathlib import Path
+from uuid import uuid4
+from app.config import settings
+from app.models import ApplicationDocument
 
 
 router = APIRouter(prefix="/applications", tags=["Applications"])
@@ -313,6 +318,136 @@ def get_application_history(
         }
         for item in history
     ]
+
+
+
+@router.get("/{application_id}/attachments")
+def get_application_attachments(
+    application_id: UUID,
+    db: Session = Depends(get_db),
+):
+    app = (
+        db.query(Application)
+        .filter(Application.id == application_id)
+        .first()
+    )
+
+    if app is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Заявка не найдена",
+        )
+
+    documents = (
+        db.query(ApplicationDocument)
+        .filter(ApplicationDocument.application_id == application_id)
+        .order_by(ApplicationDocument.uploaded_at.desc())
+        .all()
+    )
+
+    return [
+        {
+            "id": str(document.id),
+            "filename": document.filename,
+            "description": document.description,
+            "uploaded_at": document.uploaded_at.isoformat(),
+            "status": "Ожидает проверки",
+        }
+        for document in documents
+    ]
+
+
+@router.post("/{application_id}/attachments")
+async def upload_application_attachment(
+    application_id: UUID,
+    file: UploadFile = File(...),
+    description: str | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    app = (
+        db.query(Application)
+        .filter(Application.id == application_id)
+        .first()
+    )
+
+    if app is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Заявка не найдена",
+        )
+
+    if app.status not in [
+        Status.DRAFT.value,
+        Status.NEED_MORE_INFO.value,
+    ]:
+        raise HTTPException(
+            status_code=400,
+            detail="Загружать документы можно только для черновика или заявки, требующей дополнительной информации",
+        )
+
+    if not file.filename:
+        raise HTTPException(
+            status_code=400,
+            detail="Не указано имя файла",
+        )
+
+    extension = Path(file.filename).suffix.lower()
+    allowed_extensions = {".pdf", ".png", ".jpg", ".jpeg", ".docx"}
+
+    if extension not in allowed_extensions:
+        raise HTTPException(
+            status_code=400,
+            detail="Допустимые форматы: PDF, PNG, JPG, JPEG, DOCX",
+        )
+
+    max_size = 10 * 1024 * 1024
+    storage_dir = Path(settings.documents_dir) / str(application_id)
+    storage_dir.mkdir(parents=True, exist_ok=True)
+
+    stored_name = f"{uuid4().hex}{extension}"
+    file_path = storage_dir / stored_name
+    size = 0
+
+    try:
+        with file_path.open("wb") as destination:
+            while chunk := await file.read(1024 * 1024):
+                size += len(chunk)
+
+                if size > max_size:
+                    raise HTTPException(
+                        status_code=413,
+                        detail="Размер файла не должен превышать 10 МБ",
+                    )
+
+                destination.write(chunk)
+
+        document = ApplicationDocument(
+            application_id=application_id,
+            filename=Path(file.filename).name,
+            file_path=str(Path(str(application_id)) / stored_name),
+            description=description.strip() if description and description.strip() else None,
+        )
+
+        db.add(document)
+        db.commit()
+        db.refresh(document)
+
+        return {
+            "id": str(document.id),
+            "application_id": str(document.application_id),
+            "filename": document.filename,
+            "description": document.description,
+            "uploaded_at": document.uploaded_at.isoformat(),
+            "status": "Ожидает проверки",
+        }
+
+    except Exception:
+        db.rollback()
+        file_path.unlink(missing_ok=True)
+        raise
+
+    finally:
+        await file.close()
 
 
 @router.post("/{application_id}/documents", response_model=ApplicationResponse)

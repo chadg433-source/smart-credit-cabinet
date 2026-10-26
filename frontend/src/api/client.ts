@@ -21,6 +21,14 @@ type Entrepreneur = {
   created_at: string;
 };
 
+type ApplicationAttachment = {
+  id: string;
+  filename: string;
+  description: string | null;
+  uploaded_at: string;
+  status: string;
+};
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
@@ -28,7 +36,11 @@ async function request<T>(
   const token = localStorage.getItem(TOKEN_KEY);
   const headers = new Headers(options.headers);
 
-  if (options.body && !headers.has('Content-Type')) {
+  if (
+    options.body &&
+    !(options.body instanceof FormData) &&
+    !headers.has('Content-Type')
+  ) {
     headers.set('Content-Type', 'application/json');
   }
 
@@ -134,6 +146,28 @@ export const api = {
     request<Application>(`/applications/${id}/process`, {
       method: 'POST',
     }),
+
+  // GET /applications/{id}/attachments
+  getApplicationAttachments: (
+    id: string,
+  ): Promise<ApplicationAttachment[]> =>
+    request<ApplicationAttachment[]>(`/applications/${id}/attachments`),
+
+  // POST /applications/{id}/attachments
+  uploadApplicationAttachment: (
+    id: string,
+    file: File,
+    description: string,
+  ): Promise<ApplicationAttachment> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('description', description);
+
+    return request<ApplicationAttachment>(`/applications/${id}/attachments`, {
+      method: 'POST',
+      body: formData,
+    });
+  },
 
   // GET /applications/bank/queue
   getBankQueue: (): Promise<unknown[]> =>
