@@ -21,6 +21,7 @@ T = TypeVar("T", bound=Base)
 
 def seed() -> None:
     with SessionLocal() as session:
+        # 1. Предприниматель
         entrepreneur = (
             session.query(Entrepreneur)
             .where(Entrepreneur.id == settings.demo_user_id)
@@ -34,8 +35,9 @@ def seed() -> None:
                 id=settings.demo_user_id,
                 full_name="Губарьков Иван демо",
             )
+            session.flush()
 
-        # Бизнес 1: высокая платёжеспособность
+        # 2. Бизнесы (3 штуки)
         business = (
             session.query(Business)
             .where(
@@ -44,7 +46,6 @@ def seed() -> None:
             )
             .first()
         )
-
         if business is None:
             business = create_object(
                 Business,
@@ -68,7 +69,6 @@ def seed() -> None:
             )
             .first()
         )
-
         if perspective is None:
             create_object(
                 Business,
@@ -91,7 +91,6 @@ def seed() -> None:
             )
             .first()
         )
-
         if risk is None:
             create_object(
                 Business,
@@ -108,51 +107,89 @@ def seed() -> None:
 
         session.flush()
 
-        product = (
+        # 3. Продукты (3 штуки)
+        product1 = (
             session.query(CreditProduct)
-            .where(CreditProduct.name == "Бизнес-старт демо")
+            .where(CreditProduct.name == "Экспресс-кредит")
             .first()
         )
-
-        if product is None:
-            product = create_object(
+        if product1 is None:
+            product1 = create_object(
                 CreditProduct,
                 session,
-                id=settings.demo_product_id,
-                name="Бизнес-старт демо",
-                description="Кредит для развития бизнеса",
-                min_amount=Decimal("100000.00"),
-                max_amount=Decimal("5000000.00"),
+                name="Экспресс-кредит",
+                description="Быстрые деньги на развитие бизнеса",
+                min_amount=Decimal("50000.00"),
+                max_amount=Decimal("1000000.00"),
                 min_term_months=6,
-                max_term_months=60,
+                max_term_months=24,
+                annual_rate=Decimal("18.00"),
+                is_active=True,
+            )
+
+        product2 = (
+            session.query(CreditProduct)
+            .where(CreditProduct.name == "Кредит на оборот")
+            .first()
+        )
+        if product2 is None:
+            product2 = create_object(
+                CreditProduct,
+                session,
+                name="Кредит на оборот",
+                description="Для пополнения складских запасов",
+                min_amount=Decimal("500000.00"),
+                max_amount=Decimal("5000000.00"),
+                min_term_months=12,
+                max_term_months=36,
                 annual_rate=Decimal("15.00"),
+                is_active=True,
+            )
+
+        product3 = (
+            session.query(CreditProduct)
+            .where(CreditProduct.name == "Инвестиционный")
+            .first()
+        )
+        if product3 is None:
+            product3 = create_object(
+                CreditProduct,
+                session,
+                name="Инвестиционный",
+                description="На покупку оборудования или расширение",
+                min_amount=Decimal("1000000.00"),
+                max_amount=Decimal("10000000.00"),
+                min_term_months=24,
+                max_term_months=60,
+                annual_rate=Decimal("12.00"),
                 is_active=True,
             )
 
         session.flush()
 
+        # 4. Демо-заявка (по первому продукту)
         application = (
             session.query(Application)
             .where(
-                Application.credit_product_id == product.id,
+                Application.credit_product_id == product1.id,
                 Application.business_id == business.id,
                 Application.purpose == "Покупка оборудования",
             )
             .first()
         )
-
         if application is None:
             application = create_object(
                 Application,
                 session,
                 business_id=business.id,
-                credit_product_id=product.id,
+                credit_product_id=product1.id,
                 requested_amount=Decimal("1000000.00"),
                 requested_term_months=36,
                 purpose="Покупка оборудования",
                 status="SUBMITTED",
             )
 
+        # 5. Проверки и скоринг для демо-заявки
         external_check_result = (
             session.query(ExternalCheckResult)
             .where(
@@ -161,7 +198,6 @@ def seed() -> None:
             )
             .first()
         )
-
         if external_check_result is None:
             create_object(
                 ExternalCheckResult,
@@ -177,7 +213,6 @@ def seed() -> None:
             .where(ScoringResult.application_id == application.id)
             .first()
         )
-
         if scoring_result is None:
             create_object(
                 ScoringResult,
@@ -188,10 +223,7 @@ def seed() -> None:
                 payment_capacity_score=Decimal("80.00"),
                 business_age_score=Decimal("85.00"),
                 external_checks_score=Decimal("85.00"),
-                input_snapshot=(
-                    '{"monthly_revenue": 850000, '
-                    '"monthly_expenses": 500000}'
-                ),
+                input_snapshot='{"monthly_revenue": 850000, "monthly_expenses": 500000}',
             )
 
         credit_decision = (
@@ -199,7 +231,6 @@ def seed() -> None:
             .where(CreditDecision.application_id == application.id)
             .first()
         )
-
         if credit_decision is None:
             create_object(
                 CreditDecision,
@@ -221,7 +252,6 @@ def seed() -> None:
             )
             .first()
         )
-
         if application_status_history is None:
             create_object(
                 ApplicationStatusHistory,
@@ -233,6 +263,7 @@ def seed() -> None:
             )
 
         session.commit()
+        print("Сид успешно выполнен. Данные созданы (или уже существовали).")
 
 
 def create_object(
@@ -243,7 +274,6 @@ def create_object(
 ) -> T:
     if id is None:
         id = uuid.uuid4()
-
     obj = model(id=id, **kwargs)
     current_session.add(obj)
     return obj
