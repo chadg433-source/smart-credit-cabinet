@@ -21,7 +21,6 @@ const formatDate = (date: string) => {
   }).format(parsedDate);
 };
 
-// Определяем только иконку и цвет, а текст берем из getStatusLabel
 const getStatusStyle = (status: string) => {
   const normalized = status.toUpperCase();
   switch (normalized) {
@@ -248,7 +247,7 @@ export const ClientApplicationsList = () => {
                         <span>{formatDate(app.created_at)}</span>
                       </div>
 
-                      <h3>{app.credit_product_id}</h3>
+                      <h3>{app.product_name || 'Кредитный продукт'}</h3>
 
                       <div className="application-details">
                         <span className="application-amount">
