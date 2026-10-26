@@ -1,141 +1,96 @@
 from uuid import UUID
-
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
+from app.api.record_change import commit_changes
+from app.api.application_service import transition_application
 from app.database import get_db
-from app.schemas import ApplicationCreate, ApplicationResponse
-from app.models import Application, ApplicationStatusHistory, Business, CreditProduct, ScoringResult, CreditDecision
-from app.services.external_checks import run_external_checks
-from app.services.scoring import calculate_scoring
-from app.services.state_machine import assert_transition, Status
-from decimal import Decimal
+from app.models import (
+    Application,
+    ApplicationStatusHistory,
+    Business, CreditProduct
+)
+from app.schemas import ApplicationCreate, ApplicationResponse, ApplicationUpdate
+from app.services.application_processing import process_application_service
+from app.services.state_machine import Status
+from fastapi import File, Form, UploadFile
+from pathlib import Path
+from uuid import uuid4
+from app.config import settings
+from app.models import ApplicationDocument
+
+
 router = APIRouter(prefix="/applications", tags=["Applications"])
 
+
+def to_application_response(app: Application) -> ApplicationResponse:
+    return ApplicationResponse(
+        id=app.id,
+        business_id=app.business_id,
+        credit_product_id=app.credit_product_id,
+        requested_amount=app.requested_amount,
+        requested_term_months=app.requested_term_months,
+        purpose=app.purpose,
+        status=app.status,
+        product_name=app.product.name,
+        created_at=app.created_at,
+    )
+
+
 @router.post("/", response_model=ApplicationResponse)
-def create_application(app_in: ApplicationCreate, db: Session = Depends(get_db)):
+def create_application(
+    app_in: ApplicationCreate,
+    db: Session = Depends(get_db),
+):
     new_app = Application(
         business_id=app_in.business_id,
         credit_product_id=app_in.credit_product_id,
         requested_amount=app_in.requested_amount,
         requested_term_months=app_in.requested_term_months,
         purpose=app_in.purpose,
-        status= "DRAFT"
+        status=Status.DRAFT.value,
     )
-    db.add(new_app)
-    db.commit()
-    db.refresh(new_app)
-    return new_app
 
+    db.add(new_app)
+    commit_changes(db, new_app)
+    return to_application_response(new_app)
 
 @router.get("/", response_model=list[ApplicationResponse])
 def get_applications(db: Session = Depends(get_db)):
-    return db.query(Application).all()
-
-@router.post("/{application_id}/submit", response_model=ApplicationResponse)
-def submit_application(application_id: UUID, db: Session = Depends(get_db)):
-    app = db.query(Application).filter(Application.id == application_id).first()
-    if not app:
-        raise HTTPException(status_code=404, detail="Заявка не найдена")
-
-
-    try:
-        assert_transition(app.status, Status.SUBMITTED.value)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-    checks_result = run_external_checks(str(app.business_id))
-
-    if not checks_result["is_all_passed"]:
-        old_status = app.status
-        app.status = Status.NEED_MORE_INFO.value
-        history = ApplicationStatusHistory(
-            application_id=app.id,
-            old_status=old_status,
-            new_status=app.status,
-            comment= "Требуется дополнительная проверка"
-
-        )
-        db.add(history)
-        db.commit()
-        db.refresh(app)
-        return app
-
-    old_status = app.status
-    app.status = Status.SUBMITTED.value
-    history = ApplicationStatusHistory(
-        application_id=app.id,
-        old_status=old_status,
-        new_status=app.status,
-        comment="Заявка отправлена на проверку"
+    applications = (
+        db.query(Application)
+        .options(joinedload(Application.product))
+        .all()
     )
-    db.add(history)
-    db.commit()
-    db.refresh(app)
-    return app
 
-
-@router.post("/{application_id}/process", response_model=ApplicationResponse)
-def process_application(application_id: UUID, db: Session = Depends(get_db)):
-    app = db.query(Application).filter(Application.id == application_id).first()
-    if not app:
-        raise HTTPException(status_code=404, detail="Заявка не найдена")
-
-    if app.status not in [Status.NEED_MORE_INFO.value, Status.SUBMITTED.value]:
-        raise HTTPException(status_code=400, detail=f"Заявка в статусе {app.status}, нельзя обработать")
-
-    business = db.query(Business).filter(Business.id == app.business_id).first()
-    product = db.query(CreditProduct).filter(CreditProduct.id == app.credit_product_id).first()
-    scoring_data = calculate_scoring(business, product, app.requested_amount)
-    if not business or not product:
-        raise HTTPException(status_code=500, detail="Ошибка данных: бизнес или продукт не найден")
-    scoring_result = ScoringResult(
-        application_id=app.id,
-        total_score=scoring_data["total_score"],
-        financial_stability_score=scoring_data["total_score"],
-        payment_capacity_score=scoring_data["total_score"],
-        business_age_score=scoring_data["total_score"],
-        external_checks_score=scoring_data["total_score"],
-        input_snapshot= "{}"
-    )
-    db.add(scoring_result)
-
-    decision_result = CreditDecision(
-        application_id=app.id,
-        decision=scoring_data["decision"],
-        reason=scoring_data["reason"],
-        offered_amount=scoring_data["offered_amount"],
-        offered_term_months=app.requested_term_months,
-        offered_rate=product.annual_rate if product else Decimal("15.00")
-    )
-    db.add(decision_result)
-
-    old_status = app.status
-    app.status = scoring_data["decision"]
-
-    history = ApplicationStatusHistory(
-        application_id=app.id,
-        old_status=old_status,
-        new_status=app.status,
-        comment=f"Автоматическое решение: {scoring_data['reason']}"
-
-    )
-    db.add(history)
-    db.commit()
-    db.refresh(app)
-    return app
-
-@router.get("/{application_id}", response_model=ApplicationResponse)
-def get_application(application_id: UUID, db: Session = Depends(get_db)):
-    app = db.query(Application).filter(Application.id == application_id).first()
-    if not app:
-        raise HTTPException(status_code=404, detail="Заявка не найдена")
-    return app
+    return [
+        {
+            "id": app.id,
+            "business_id": app.business_id,
+            "credit_product_id": app.credit_product_id,
+            "requested_amount": app.requested_amount,
+            "requested_term_months": app.requested_term_months,
+            "purpose": app.purpose,
+            "status": app.status,
+            "created_at": app.created_at,
+            "product_name": app.product.name,
+        }
+        for app in applications
+    ]
 
 @router.get("/bank/queue")
-def get_bank_queue(db: Session = Depends(get_db)):
-    results = db.query(Application, Business.name).join(
-        Business, Application.business_id == Business.id
-    ).order_by(Application.created_at.desc()).all()
+def get_bank_queue(
+    skip: int = 0,
+    limit: int = 50,
+    db: Session = Depends(get_db)
+):
+    results = (
+        db.query(Application, Business.name)
+        .join(Business, Application.business_id == Business.id)
+        .order_by(Application.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
     return [
         {
@@ -144,80 +99,472 @@ def get_bank_queue(db: Session = Depends(get_db)):
             "requested_amount": float(app.requested_amount),
             "requested_term_months": app.requested_term_months,
             "status": app.status,
-            "can_be_processed": app.status in ["SUBMITTED", "NEED_MORE_INFO"],
-            "created_at": app.created_at.isoformat() if app.created_at else None
+            "can_be_processed": app.status
+            in [
+                Status.SUBMITTED.value,
+                Status.NEED_MORE_INFO.value,
+            ],
+            "created_at": (
+                app.created_at.isoformat() if app.created_at else None
+            ),
         }
         for app, business_name in results
     ]
+@router.patch("/{application_id}", response_model=ApplicationResponse)
+def update_application(
+    application_id: UUID,
+    app_in: ApplicationUpdate,
+    db: Session = Depends(get_db),
+):
+    app = (
+        db.query(Application)
+        .options(joinedload(Application.product))
+        .filter(Application.id == application_id)
+        .first()
+    )
 
+    if app is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Заявка не найдена",
+        )
 
-# вот по этой приколюхе рисовать полоску с этапами в кабинете клиента
-@router.get("/{application_id}/history")
-def get_application_history(application_id: UUID, db: Session = Depends(get_db)):
-    app = db.query(Application).filter(Application.id == application_id).first()
+    if app.status != Status.NEED_MORE_INFO.value:
+        raise HTTPException(
+            status_code=400,
+            detail="Редактировать можно только заявку, требующую дополнительной информации",
+        )
+
+    product = (
+        db.query(CreditProduct)
+        .filter(CreditProduct.id == app.credit_product_id)
+        .first()
+    )
+
+    if product is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Кредитный продукт не найден",
+        )
+
+    if not (
+        product.min_amount
+        <= app_in.requested_amount
+        <= product.max_amount
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Сумма кредита выходит за допустимые пределы продукта",
+        )
+
+    if not (
+        product.min_term_months
+        <= app_in.requested_term_months
+        <= product.max_term_months
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Срок кредита выходит за допустимые пределы продукта",
+        )
+
+    app.requested_amount = app_in.requested_amount
+    app.requested_term_months = app_in.requested_term_months
+    app.purpose = app_in.purpose.strip()
+
+    if not app.purpose:
+        raise HTTPException(
+            status_code=400,
+            detail="Укажите цель кредита",
+        )
+
+    try:
+        commit_changes(db, app)
+    except Exception:
+        db.rollback()
+        raise
+
+    return to_application_response(app)
+
+@router.post("/{application_id}/submit", response_model=ApplicationResponse)
+def submit_application(
+    application_id: UUID,
+    db: Session = Depends(get_db),
+):
+    app = (
+        db.query(Application)
+        .filter(Application.id == application_id)
+        .first()
+    )
+
     if not app:
-        raise HTTPException(status_code=404, detail="Заявка не найдена")
+        raise HTTPException(
+            status_code=404,
+            detail="Заявка не найдена",
+        )
 
-    history = db.query(ApplicationStatusHistory).filter(
-        ApplicationStatusHistory.application_id == application_id
-    ).order_by(ApplicationStatusHistory.changed_at.asc()).all()
+    try:
+        if app.status == Status.NEED_MORE_INFO.value:
+            transition_application(
+                app,
+                Status.VALIDATION.value,
+                "Повторная проверка после догрузки данных",
+                db,
+            )
+
+        elif app.status == Status.DRAFT.value:
+            transition_application(
+                app,
+                Status.SUBMITTED.value,
+                "Заявка отправлена на проверку",
+                db
+
+            )
+        else:
+            raise HTTPException(400,  detail=f"Нельзя отправить заявку в статусе {app.status}")
+
+        commit_changes(db, app)
+
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+
+    except Exception:
+        db.rollback()
+        raise
+
+    try:
+        app = process_application_service(app, db)
+        return to_application_response(app)
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+    except Exception:
+        db.rollback()
+        raise
+
+
+
+@router.post("/{application_id}/process", response_model=ApplicationResponse)
+def process_application(
+    application_id: UUID,
+    db: Session = Depends(get_db),
+):
+    app = (
+        db.query(Application)
+        .filter(Application.id == application_id)
+        .first()
+    )
+
+    if app is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Заявка не найдена",
+        )
+
+    try:
+        return to_application_response(
+            process_application_service(app, db)
+        )
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+    except Exception:
+        db.rollback()
+        raise
+
+@router.get("/{application_id}/history")
+def get_application_history(
+    application_id: UUID,
+    db: Session = Depends(get_db),
+):
+    app = (
+        db.query(Application)
+        .filter(Application.id == application_id)
+        .first()
+    )
+
+    if not app:
+        raise HTTPException(
+            status_code=404,
+            detail="Заявка не найдена",
+        )
+
+    history = (
+        db.query(ApplicationStatusHistory)
+        .filter(ApplicationStatusHistory.application_id == application_id)
+        .order_by(ApplicationStatusHistory.changed_at.asc())
+        .all()
+    )
 
     return [
         {
-            "old_status": h.old_status,
-            "new_status": h.new_status,
-            "comment": h.comment,
-            "created_at": h.changed_at.isoformat() if h.changed_at else None
+            "old_status": item.old_status,
+            "new_status": item.new_status,
+            "comment": item.comment,
+            "created_at": (
+                item.changed_at.isoformat()
+                if item.changed_at
+                else None
+            ),
         }
-        for h in history
+        for item in history
     ]
 
-# тут подписываем документики
-@router.post("/{application_id}/documents", response_model=ApplicationResponse)
-def sign_documents(application_id: UUID, db: Session = Depends(get_db)):
-    app = db.query(Application).filter(Application.id == application_id).first()
-    if not app:
-        raise HTTPException(status_code=404, detail="Заявка не найдена")
 
-    if app.status not in [Status.APPROVED.value, Status.APPROVED_WITH_CONDITIONS.value]:
-        raise HTTPException(status_code=400, detail=f"Нельзя подписать документы в статусе {app.status}")
 
-    old_status = app.status
-    app.status = Status.DOCUMENTS.value
-
-    history = ApplicationStatusHistory(
-        application_id=app.id,
-        old_status=old_status,
-        new_status=app.status,
-        comment="Клиент подписал кредитные документы"
+@router.get("/{application_id}/attachments")
+def get_application_attachments(
+    application_id: UUID,
+    db: Session = Depends(get_db),
+):
+    app = (
+        db.query(Application)
+        .filter(Application.id == application_id)
+        .first()
     )
-    db.add(history)
-    db.commit()
-    db.refresh(app)
-    return app
+
+    if app is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Заявка не найдена",
+        )
+
+    documents = (
+        db.query(ApplicationDocument)
+        .filter(ApplicationDocument.application_id == application_id)
+        .order_by(ApplicationDocument.uploaded_at.desc())
+        .all()
+    )
+
+    return [
+        {
+            "id": str(document.id),
+            "filename": document.filename,
+            "description": document.description,
+            "uploaded_at": document.uploaded_at.isoformat(),
+            "status": "Ожидает проверки",
+        }
+        for document in documents
+    ]
 
 
-#тут выдаем кредит
-@router.post("/{application_id}/disburse", response_model=ApplicationResponse)
-def disburse_application(application_id: UUID, db: Session = Depends(get_db)):
-    app = db.query(Application).filter(Application.id == application_id).first()
+@router.post("/{application_id}/attachments")
+async def upload_application_attachment(
+    application_id: UUID,
+    file: UploadFile = File(...),
+    description: str | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    app = (
+        db.query(Application)
+        .filter(Application.id == application_id)
+        .first()
+    )
+
+    if app is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Заявка не найдена",
+        )
+
+    if app.status not in [
+        Status.DRAFT.value,
+        Status.NEED_MORE_INFO.value,
+    ]:
+        raise HTTPException(
+            status_code=400,
+            detail="Загружать документы можно только для черновика или заявки, требующей дополнительной информации",
+        )
+
+    if not file.filename:
+        raise HTTPException(
+            status_code=400,
+            detail="Не указано имя файла",
+        )
+
+    extension = Path(file.filename).suffix.lower()
+    allowed_extensions = {".pdf", ".png", ".jpg", ".jpeg", ".docx"}
+
+    if extension not in allowed_extensions:
+        raise HTTPException(
+            status_code=400,
+            detail="Допустимые форматы: PDF, PNG, JPG, JPEG, DOCX",
+        )
+
+    max_size = 10 * 1024 * 1024
+    storage_dir = Path(settings.documents_dir) / str(application_id)
+    storage_dir.mkdir(parents=True, exist_ok=True)
+
+    stored_name = f"{uuid4().hex}{extension}"
+    file_path = storage_dir / stored_name
+    size = 0
+
+    try:
+        with file_path.open("wb") as destination:
+            while chunk := await file.read(1024 * 1024):
+                size += len(chunk)
+
+                if size > max_size:
+                    raise HTTPException(
+                        status_code=413,
+                        detail="Размер файла не должен превышать 10 МБ",
+                    )
+
+                destination.write(chunk)
+
+        document = ApplicationDocument(
+            application_id=application_id,
+            filename=Path(file.filename).name,
+            file_path=str(Path(str(application_id)) / stored_name),
+            description=description.strip() if description and description.strip() else None,
+        )
+
+        db.add(document)
+        db.commit()
+        db.refresh(document)
+
+        return {
+            "id": str(document.id),
+            "application_id": str(document.application_id),
+            "filename": document.filename,
+            "description": document.description,
+            "uploaded_at": document.uploaded_at.isoformat(),
+            "status": "Ожидает проверки",
+        }
+
+    except Exception:
+        db.rollback()
+        file_path.unlink(missing_ok=True)
+        raise
+
+    finally:
+        await file.close()
+
+
+@router.post("/{application_id}/documents", response_model=ApplicationResponse)
+def sign_documents(
+    application_id: UUID,
+    db: Session = Depends(get_db),
+):
+    app = (
+        db.query(Application)
+        .filter(Application.id == application_id)
+        .first()
+    )
+
     if not app:
-        raise HTTPException(status_code=404, detail="Заявка не найдена")
+        raise HTTPException(
+            status_code=404,
+            detail="Заявка не найдена",
+        )
+
+    if app.status not in [
+        Status.APPROVED.value,
+        Status.APPROVED_WITH_CONDITIONS.value,
+    ]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Нельзя подписать документы в статусе {app.status}",
+        )
+
+    try:
+        transition_application(
+            app,
+            Status.DOCUMENTS.value,
+            "Клиент подписал кредитные документы",
+            db,
+        )
+
+        commit_changes(db, app)
+
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+
+    except Exception:
+        db.rollback()
+        raise
+
+    return to_application_response(app)
+
+
+@router.post("/{application_id}/disburse", response_model=ApplicationResponse)
+def disburse_application(
+    application_id: UUID,
+    db: Session = Depends(get_db),
+):
+    app = (
+        db.query(Application)
+        .filter(Application.id == application_id)
+        .first()
+    )
+
+    if not app:
+        raise HTTPException(
+            status_code=404,
+            detail="Заявка не найдена",
+        )
 
     if app.status != Status.DOCUMENTS.value:
-        raise HTTPException(status_code=400,
-                            detail=f"Нельзя выдать кредит в статусе {app.status}. Сначала подпишите документы.")
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Нельзя выдать кредит в статусе {app.status}. "
+                "Сначала подпишите документы."
+            ),
+        )
 
-    old_status = app.status
-    app.status = Status.DISBURSED.value
+    try:
+        transition_application(
+            app,
+            Status.DISBURSED.value,
+            "Денежные средства переведены на счёт компании",
+            db,
+        )
 
-    history = ApplicationStatusHistory(
-        application_id=app.id,
-        old_status=old_status,
-        new_status=app.status,
-        comment="Денежные средства переведены на счет компании "
+        commit_changes(db, app)
+
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+
+    except Exception:
+        db.rollback()
+        raise
+
+    return to_application_response(app)
+
+
+@router.get("/{application_id}", response_model=ApplicationResponse)
+def get_application(
+    application_id: UUID,
+    db: Session = Depends(get_db),
+):
+    app = (
+        db.query(Application)
+        .filter(Application.id == application_id)
+        .first()
     )
-    db.add(history)
-    db.commit()
-    db.refresh(app)
-    return app
+
+    if not app:
+        raise HTTPException(
+            status_code=404,
+            detail="Заявка не найдена",
+        )
+
+    return to_application_response(app)

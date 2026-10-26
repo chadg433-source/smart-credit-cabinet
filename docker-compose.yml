@@ -17,8 +17,13 @@ services:
 
   backend:
     build: ./backend
+    env_file:
+      - ./backend/.env
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-alfa}:${POSTGRES_PASSWORD:-alfa}@db:5432/${POSTGRES_DB:-credit}
+      DOCUMENTS_DIR: /app/storage/application_documents
+    volumes:
+      - application_files:/app/storage/application_documents
     ports:
       - "8000:8000"
     depends_on:
@@ -38,3 +43,4 @@ services:
 
 volumes:
   pgdata:
+  application_files:

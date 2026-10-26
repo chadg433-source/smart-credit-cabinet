@@ -8,9 +8,17 @@ import sys
 import os
 sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), '..')))
 from app import models
-from app.models import Entrepreneur, Business, CreditProduct, Application,\
-    ExternalCheckResult, ScoringResult, \
-    CreditDecision, ApplicationStatusHistory
+from app.models import (
+    Entrepreneur,
+    Business,
+    CreditProduct,
+    Application,
+    ExternalCheckResult,
+    ScoringResult,
+    CreditDecision,
+    ApplicationStatusHistory,
+    ApplicationDocument,
+)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
